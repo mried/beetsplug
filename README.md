@@ -1,4 +1,4 @@
 beetsplug
 =========
 
-Some plugins for beets - The music geek's media organizer
+Here are some plugins I wrote for my personal use.
