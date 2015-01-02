@@ -13,6 +13,7 @@
 # included in all copies or substantial portions of the Software.
 import os
 import sys
+from beets.importer import SingletonImportTask
 from beets.plugins import BeetsPlugin
 
 
@@ -48,7 +49,9 @@ class DirFieldsPlugin(BeetsPlugin):
         if len(levels) == 0:
             highest_level = 0
 
-        for item in task.items:
+        items = [task.item] if isinstance(task, SingletonImportTask) else task.items
+
+        for item in items:
             path = os.path.normpath(item.path)
             dirs = []
             while path and len(path) > 0:
