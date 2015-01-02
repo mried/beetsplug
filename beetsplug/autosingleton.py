@@ -12,7 +12,9 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 import os
-from beets.importer import ImportTask, SingletonImportTask, action
+import re
+from beets.importer import ImportTask, SingletonImportTask, action, \
+    SentinelImportTask, ArchiveImportTask
 from beets.plugins import BeetsPlugin
 from beets.util import pipeline
 
@@ -29,31 +31,43 @@ class AutoSingletonPlugin(BeetsPlugin):
 
         :type task: ImportTask
         """
-        if isinstance(task, SingletonImportTask):
-            return
+        if isinstance(task, SingletonImportTask) \
+                or isinstance(task, SentinelImportTask)\
+                or isinstance(task, ArchiveImportTask):
+            return task
 
-        path, folder = os.path.split(task.paths[0])
-        if folder.lower() == 'misc':
-            # Singletons
-            self.emit_singletons(task)
-            return
+        if self.is_singleton(task):
+            return self.get_singletons(task)
+        return task
 
-        # Are there any directories in the folder of the current task?
-            # Singletons
-            # return self.emit_singletons(task)
-
-        # Do th file names of all items start with two digits?
-            # Album
-            # return task
-
-        # Else:
-        # Singletons
-        # return self.emit_singletons(task)
-
-    def emit_singletons(self, task):
+    def get_singletons(self, task):
         task.choice_flag = action.SKIP
         new_tasks = []
         for item in task.items:
             new_tasks.append(SingletonImportTask(task.toppath, item))
 
-        pipeline.multiple(new_tasks)
+        return new_tasks
+
+    def is_singleton(self, task):
+        path, folder = os.path.split(task.paths[0])
+        if folder.lower() == 'misc':
+            # Singletons
+            return True
+
+        # Are there any directories in the folder of the current task?
+        for sub_entry in os.listdir(task.paths[0]):
+            sub_entry = os.path.join(task.paths[0], sub_entry)
+            if os.path.isdir(sub_entry):
+                # Singletons
+                return True
+
+        # Do any of the file names of all items does not start with two digits?
+        pattern = re.compile('\\d\\d+ - ', re.IGNORECASE)
+        for path in [item['path'] for item in task.items]:
+            _, file_name = os.path.split(path)
+            if path.endswith('.mp3') and not pattern.match(file_name):
+                # Singleton
+                return True
+
+        # Album
+        return False
