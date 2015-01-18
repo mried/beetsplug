@@ -77,8 +77,8 @@ class DirFieldsPluginTest(_common.TestCase, ImportHelper):
             self.assertDictContainsSubset(dirs, item)
             self.assertNotIn('abc', item)
 
-    def test_fields_levels(self):
-        config['dirfields']['levels'] = '6,-1,6,4-3,8-'
+    def __run_fields_levels(self, levels, expected_levels=None):
+        config['dirfields']['levels'] = levels
         import_files = [self.import_dir]
         self._setup_import_session()
         self.importer.paths = import_files
@@ -87,9 +87,11 @@ class DirFieldsPluginTest(_common.TestCase, ImportHelper):
 
         dirs = {}
         missing_dirs = []
-        levels = [0, 1, 3, 4, 6, 8, 9]
-        for idx, dir_name in enumerate(import_files[0].split(os.path.sep)):
-            if idx in levels:
+        paths = self.import_dir.split(os.path.sep)
+        if not expected_levels:
+            expected_levels = range(0, len(paths))
+        for idx, dir_name in enumerate(paths):
+            if idx in expected_levels:
                 dirs["dir%i" % idx] = dir_name
             else:
                 missing_dirs.append("dir%i" % idx)
@@ -97,3 +99,15 @@ class DirFieldsPluginTest(_common.TestCase, ImportHelper):
             self.assertDictContainsSubset(dirs, item)
             for level in missing_dirs:
                 self.assertNotIn(level, item)
+
+    def test_fields_levels(self):
+        self.__run_fields_levels('6,-1,6,4-3,8-', [0, 1, 3, 4, 6, 8, 9])
+
+    def test_fields_levels_int(self):
+        self.__run_fields_levels(3, [3])
+
+    def test_fields_levels_none(self):
+        self.__run_fields_levels(None)
+
+    def test_fields_levels_empty(self):
+        self.__run_fields_levels('')

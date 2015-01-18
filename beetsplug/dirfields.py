@@ -26,7 +26,7 @@ class DirFieldsPlugin(BeetsPlugin):
     def stage(self, config, task):
         highest_level = sys.maxint
         levels = []
-        if 'levels' in self.config:
+        if 'levels' in self.config and self.config['levels'].get():
             level_split = str(self.config['levels'].get()).split(',')
             for level_config in level_split:
                 level_config = level_config.replace(' ', '')
