@@ -1,4 +1,3 @@
-import logging
 import os
 import shutil
 import math
@@ -6,12 +5,10 @@ import math
 from PIL import Image
 
 from beets.plugins import BeetsPlugin
-from beets.ui import Subcommand, print_
+from beets.ui import Subcommand
 from beets import config
 from beets import ui
 from beets import util
-
-log = logging.getLogger('beets')
 
 
 class ArtToolsPlugin(BeetsPlugin):
@@ -45,6 +42,13 @@ class ArtToolsPlugin(BeetsPlugin):
         copy_bound_art_command.parser.add_option('-d', '--dir', dest='dir',
                                                  help='The directory to copy '
                                                       'the images to')
+        copy_bound_art_command.parser.add_option('-n', '--no-action',
+                                                 dest='noAction',
+                                                 action='store_true',
+                                                 default=False,
+                                                 help='do not copy anything, '
+                                                      'only print files this '
+                                                      'command would copy')
 
         choose_art_command = Subcommand('chooseart',
                                         help='chooses the best album art file')
@@ -100,7 +104,7 @@ class ArtToolsPlugin(BeetsPlugin):
         """List all art files bound to albums selected by the query"""
         albums = lib.albums(ui.decargs(args))
         for image in self._get_bound_art_files(albums):
-            print_(image)
+            self._log.info(image)
 
     def list_bad_bound_art(self, lib, opts, args):
         """List all art files bound to albums selected by the query which
@@ -108,55 +112,56 @@ class ArtToolsPlugin(BeetsPlugin):
         aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
         size_thresh = self.config['size_thresh'].get()
 
-        print_(
+        self._log.info(
             u"Art is bad if its aspect ratio is < {0} or either width or "
-            u"height is < {1}".format(
-                aspect_ratio_thresh,
-                size_thresh))
+            u"height is < {1}", aspect_ratio_thresh, size_thresh)
 
         albums = lib.albums(ui.decargs(args))
         for image in self._get_bound_art_files(albums):
             try:
                 width, height, size, aspect_ratio = self._get_image_info(image)
                 if aspect_ratio < aspect_ratio_thresh or size < size_thresh:
-                    print_(u"{0} ({1}|{2}) {3:.4}".format(image, width, height,
-                                                          aspect_ratio))
+                    self._log.info(u'{0} ({1}|{2}) {3:.4}', image, width,
+                                   height, aspect_ratio)
             except Exception:
                 pass
 
-    @staticmethod
-    def copy_bound_art(lib, opts, args):
+    def copy_bound_art(self, lib, opts, args):
         if not opts.dir:
-            print_(u"Usage: beet copyart -d <destination directory> [<query>]")
+            self._log.info(u"Usage: beet copyart -d <destination directory> "
+                           u"[<query>]")
             return
 
         dest_dir = opts.dir
         if not os.path.exists(dest_dir) or not os.path.isdir(dest_dir):
-            print_(
+            self._log.info(
                 u"'{0}' does not exist or is not a directory. "
-                u"Stopping.".format(dest_dir))
+                u"Stopping.", dest_dir)
             return
 
         query = ui.decargs(args)
-        print_(u"Copying all album art to {0} using query {1}".format(dest_dir,
-                                                                      query))
+        self._log.info(u"Copying all album art to {0} using query {1}",
+                       dest_dir, query)
         albums = lib.albums(query)
         for album in albums:
             if album.artpath:
-                new_filename = album.evaluate_template(u"$albumartist - $album",
+                new_filename = album.evaluate_template(u"$albumartist - "
+                                                       u"$album",
                                                        for_path=True)
-                # u"" + album.albumartist + u" - " + album.album + u".jpg"
                 if album.albumtype == u'compilation':
                     new_filename = u"" + album.album
+                # Add the file extension
                 new_filename += os.path.splitext(album.artpath)[1]
 
                 old_path = util.syspath(album.artpath)
                 new_path = util.syspath(os.path.join(dest_dir, new_filename))
 
-                print_(u"Copy '{0}' to '{1}'".format(
-                    util.displayable_path(old_path),
-                    util.displayable_path(new_path)))
-                # shutil.copy(old_path, new_path)
+                self._log.info(u"Copy '{0}' to '{1}'",
+                               util.displayable_path(old_path),
+                               util.displayable_path(new_path))
+
+                if not opts.noAction:
+                    shutil.copy(old_path, new_path)
 
     def choose_art(self, lib, opts, args):
         aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
@@ -178,9 +183,9 @@ class ArtToolsPlugin(BeetsPlugin):
                             filtered_images.append(image)
 
                     if len(filtered_images) == 0:
-                        log.debug(
-                            u"badart: no image matched rules for album " +
-                            album.album + ", choosing first")
+                        self._log.debug(
+                            u"badart: no image matched rules for album '{0}', "
+                            u"choosing first", album.album)
                         chosen_image = images[0]
                     else:
                         # Get the file size for each image
@@ -192,7 +197,8 @@ class ArtToolsPlugin(BeetsPlugin):
                         max_index = file_sizes.index(max_value)
 
                         chosen_image = images[max_index]
-                    print_(u"choosed " + util.displayable_path(chosen_image))
+                    self._log.info(u"choosed {0}",
+                                   util.displayable_path(chosen_image))
                     new_image = os.path.join(album_path, art_filename +
                                              os.path.splitext(chosen_image)[1])
                     if not opts.noAction:
@@ -201,8 +207,8 @@ class ArtToolsPlugin(BeetsPlugin):
                         album.set_art(new_image)
                         album.store()
                 else:
-                    log.debug(
-                        u"badart: no image found for album " + album.album)
+                    self._log.debug(
+                        u"badart: no image found for album {0}", album.album)
 
     def delete_unused_arts(self, lib, opts, args):
         art_filename = config["art_filename"].get()
@@ -213,7 +219,8 @@ class ArtToolsPlugin(BeetsPlugin):
                 for image in self._get_art_files(album_path):
                     if os.path.splitext(os.path.basename(image))[0] !=\
                             art_filename:
-                        print_(u"removing " + util.displayable_path(image))
+                        self._log.info(u"removing {0}",
+                                       util.displayable_path(image))
                         if not opts.noAction:
                             os.remove(image)
 
@@ -231,7 +238,7 @@ class ArtToolsPlugin(BeetsPlugin):
                             self._get_image_info(util.syspath(image))
                         info = u" ({0} x {1}) AR: {2}".format(width, height,
                                                               aspect_ratio)
-                    print_(image + info)
+                    self._log.info(image + info)
 
     def art_collage(self, lib, opts, args):
         albums = lib.albums(ui.decargs(args))
@@ -240,14 +247,15 @@ class ArtToolsPlugin(BeetsPlugin):
         out_file = os.path.abspath(opts.outFile)
 
         if not out_file:
-            print_(u"Usage: artcollage -f <output file> [-s <size>] [query]")
+            self._log.info(u"Usage: artcollage -f <output file> [-s <size>] "
+                           u"[query]")
             return
 
         if os.path.isdir(out_file):
             out_file = os.path.join(out_file, "covers.jpg")
 
         if not os.path.exists(os.path.split(out_file)[0]):
-            print_(u"Destination does not exist.")
+            self._log.error(u"Destination does not exist.")
             return
 
         cols = int(math.floor(math.sqrt(len(images))))
@@ -269,14 +277,13 @@ class ArtToolsPlugin(BeetsPlugin):
 
         result.save(out_file)
 
-    @staticmethod
-    def _get_image_info(path):
+    def _get_image_info(self, path):
         """Extracts some informations about the image at the given path.
         Returns the width, height, size and aspect ratio of the image.
         The size equals width if width < height."""
         im = Image.open(util.syspath(path))
         if not im:
-            log.warn("badart: not able to open file '" + path + "'")
+            self._log.warn(u"badart: not able to open file '{0}'", path)
             return
         width = im.size[0]
         height = im.size[1]
