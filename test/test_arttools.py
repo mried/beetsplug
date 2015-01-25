@@ -220,12 +220,12 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         albums[2].store()
 
         with capture_log('beets.arttools') as logs:
-            self.run_command('copyart')
+            self.run_command('copyboundart')
         self.assertEqual(len(logs), 1)
         self.assertTrue(logs[0].startswith('arttools: Usage:'))
 
         with capture_log('beets.arttools') as logs:
-            self.run_command('copyart', '-d', 'NotThere')
+            self.run_command('copyboundart', '-d', 'NotThere')
         self.assertEqual(len(logs), 1)
         self.assertTrue(logs[0].startswith("arttools: 'NotThere' does not "
                                            "exist"))
@@ -238,22 +238,22 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         for f in files:
             self.assertNotExists(f)
 
-        self.run_command('copyart', '-d', self.temp_dir)
+        self.run_command('copyboundart', '-d', self.temp_dir)
         for f in files:
             self.assertExists(f)
             os.remove(f)
 
-        self.run_command('copyart', '-d', self.temp_dir, '-n')
+        self.run_command('copyboundart', '-d', self.temp_dir, '-n')
         for f in files:
             self.assertNotExists(f)
 
         with capture_log('beets.arttools') as logs:
-            self.run_command('copyart', '-d', self.temp_dir, 'NotThere')
+            self.run_command('copyboundart', '-d', self.temp_dir, 'NotThere')
         self.assertEqual(len(logs), 1)
         self.assertTrue(logs[0].startswith("arttools: Copying all album art to"
                                            " {0}".format(self.temp_dir)))
 
-        self.run_command('copyart', '-d', self.temp_dir, 'Small')
+        self.run_command('copyboundart', '-d', self.temp_dir, 'Small')
         self.assertExists(files[0])
         os.remove(files[0])
 

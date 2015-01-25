@@ -48,7 +48,7 @@ class ArtToolsPlugin(BeetsPlugin):
                                                      'are bad')
         list_bad_bound_art_command.func = self.list_bad_bound_art
 
-        copy_bound_art_command = Subcommand('copyart',
+        copy_bound_art_command = Subcommand('copyboundart',
                                             help='copys all cover arts of the '
                                                  'selected albums into a '
                                                  'single directory')
