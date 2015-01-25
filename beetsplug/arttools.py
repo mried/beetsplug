@@ -118,7 +118,7 @@ class ArtToolsPlugin(BeetsPlugin):
         """List all art files bound to albums selected by the query"""
         albums = lib.albums(ui.decargs(args))
         for image in self._get_bound_art_files(albums):
-            self._log.info(image)
+            self._log.info(util.displayable_path(image))
 
     def list_bad_bound_art(self, lib, opts, args):
         """List all art files bound to albums selected by the query which
@@ -135,7 +135,8 @@ class ArtToolsPlugin(BeetsPlugin):
             try:
                 width, height, size, aspect_ratio = self._get_image_info(image)
                 if aspect_ratio < aspect_ratio_thresh or size < size_thresh:
-                    self._log.info(u'{0} ({1}|{2}) {3:.4}', image, width,
+                    self._log.info(u'{0} ({1} x {2}) AR:{3:.4}',
+                                   util.displayable_path(image), width,
                                    height, aspect_ratio)
             except Exception:
                 pass
@@ -146,16 +147,16 @@ class ArtToolsPlugin(BeetsPlugin):
                            u"[<query>]")
             return
 
-        dest_dir = opts.dir
+        dest_dir = os.path.normpath(opts.dir)
         if not os.path.exists(dest_dir) or not os.path.isdir(dest_dir):
             self._log.info(
                 u"'{0}' does not exist or is not a directory. "
-                u"Stopping.", dest_dir)
+                u"Stopping.", util.displayable_path(dest_dir))
             return
 
         query = ui.decargs(args)
-        self._log.info(u"Copying all album art to {0} using query {1}",
-                       dest_dir, query)
+        self._log.info(u"Copying all album art to {0}",
+                       util.displayable_path(dest_dir),)
         albums = lib.albums(query)
         for album in albums:
             if album.artpath:
@@ -185,27 +186,26 @@ class ArtToolsPlugin(BeetsPlugin):
         for album in albums:
             album_path = album.item_dir()
             if album_path:
-                album_path = unicode(util.syspath(album_path), "utf-8")
                 images = self._get_art_files(album_path)
                 if images and len(images) > 0:
                     filtered_images = []
                     for image in images:
                         width, height, size, aspect_ratio = self.\
-                            _get_image_info(image)
+                            _get_image_info(util.syspath(image))
                         if aspect_ratio >= aspect_ratio_thresh and \
                            size >= size_thresh:
                             filtered_images.append(image)
 
                     if len(filtered_images) == 0:
                         self._log.debug(
-                            u"badart: no image matched rules for album '{0}', "
+                            u"no image matched rules for album '{0}', "
                             u"choosing first", album.album)
                         chosen_image = images[0]
                     else:
                         # Get the file size for each image
                         file_sizes = map(
-                            lambda file_name: os.stat(file_name).st_size,
-                            filtered_images)
+                            lambda file_name: os.stat(util.syspath(file_name))
+                            .st_size, filtered_images)
                         # Find the image with the greatest file size
                         max_value = max(file_sizes)
                         max_index = file_sizes.index(max_value)
@@ -222,7 +222,7 @@ class ArtToolsPlugin(BeetsPlugin):
                         album.store()
                 else:
                     self._log.debug(
-                        u"badart: no image found for album {0}", album.album)
+                        u"no image found for album {0}", album.album)
 
     def delete_unused_arts(self, lib, opts, args):
         art_filename = config["art_filename"].get()
@@ -236,7 +236,7 @@ class ArtToolsPlugin(BeetsPlugin):
                         self._log.info(u"removing {0}",
                                        util.displayable_path(image))
                         if not opts.noAction:
-                            os.remove(image)
+                            os.remove(util.syspath(image))
 
     def list_art(self, lib, opts, args):
         """Prints all found images matching the configured names."""
@@ -250,17 +250,17 @@ class ArtToolsPlugin(BeetsPlugin):
                     if opts.verbose:
                         width, height, size, aspect_ratio = \
                             self._get_image_info(util.syspath(image))
-                        info = u" ({0} x {1}) AR: {2}".format(width, height,
-                                                              aspect_ratio)
-                    self._log.info(image + info)
+                        info = u" ({0} x {1}) AR:{2:.4}".format(width, height,
+                                                                aspect_ratio)
+                    self._log.info(util.displayable_path(image) + info)
 
     def art_collage(self, lib, opts, args):
         albums = lib.albums(ui.decargs(args))
         images = self._get_bound_art_files(albums)
-        tile_size = opts.tilesize
+        tile_size = opts.tilesize or self.config['collage_tilesize'].get()
         out_file = os.path.abspath(opts.outFile)
 
-        if not out_file:
+        if not opts.outFile:
             self._log.info(u"Usage: artcollage -f <output file> [-s <size>] "
                            u"[query]")
             return
@@ -320,12 +320,13 @@ class ArtToolsPlugin(BeetsPlugin):
                 if fileName.lower().endswith('.' + ext) and os.path.isfile(
                         os.path.join(path, fileName)):
                     images.append(os.path.join(path, fileName))
+                    break
 
         filtered = []
         for name in names:
             for image in images:
                 if os.path.splitext(os.path.basename(image))[0] == name:
-                    filtered.append(util.syspath(image))
+                    filtered.append(image)
 
         return filtered
 
