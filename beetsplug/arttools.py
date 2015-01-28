@@ -24,6 +24,7 @@ from beets import config
 from beets import ui
 from beets import util
 from beets.util import normpath
+import beetsplug
 from beetsplug.embedart import EmbedCoverArtPlugin
 from beetsplug.fetchart import FetchArtPlugin
 
@@ -38,12 +39,7 @@ class ArtToolsPlugin(BeetsPlugin):
             'additional_names': [],
             'collage_tilesize': 200,
             'collect_extract': True,
-            'collect_fetch_sources': [u'coverart',
-                                      u'itunes',
-                                      u'amazon',
-                                      u'albumart',
-                                      u'google',
-                                      u'wikipedia']
+            'collect_fetch_sources': beetsplug.fetchart.SOURCES_ALL
         })
 
     def commands(self):
@@ -307,17 +303,23 @@ class ArtToolsPlugin(BeetsPlugin):
         result.save(out_file)
 
     def collect_art(self, lib, opts, args):
-
         albums = lib.albums(ui.decargs(args))
         if self.config['collect_extract'].get():
+            self._log.info(u"Extracting cover arts for matched albums...")
             extracter = EmbedCoverArtPlugin()
+            success = 0
             for album in albums:
                 artpath = normpath(os.path.join(album.path, 'extracted'))
-                extracter.extract_first(artpath, album.items())
+                if extracter.extract_first(artpath, album.items()):
+                    success += 1
+            self._log.info(u"Extracted cover art for {0} of {1} albums",
+                           success, len(albums))
 
         if len(self.config['collect_fetch_sources'].get()) > 0:
             config['fetchart'].get()['remote_priority'] = True
             for source in self.config['collect_fetch_sources'].as_str_seq():
+                self._log.info(u"Fetching album arts using source {0}", source)
+                success = 0
                 config['fetchart'].get()['sources'] = [source]
                 artname = 'fetched{0}'.format(source.title())
                 fetcher = FetchArtPlugin()
@@ -328,6 +330,9 @@ class ArtToolsPlugin(BeetsPlugin):
                         artpath = normpath(os.path.join(album.path,
                                                         artname + extension))
                         shutil.move(filename, artpath)
+                        success += 1
+                self._log.info(u"  Found {0} of {1} cover arts.", success,
+                               len(albums))
 
     def _get_image_info(self, path):
         """Extracts some informations about the image at the given path.
