@@ -44,9 +44,9 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         self.teardown_beets()
 
     def __create_album(self, artist='Artist', album='Album', art_width=None,
-                       art_height=None):
+                       art_height=None, src_file='full.mp3'):
         album = self.add_album(albumartist=artist, artist=artist, album=album)
-        src = os.path.join(_common.RSRC, 'full.mp3')
+        src = os.path.join(_common.RSRC, src_file)
         for item in album.items():
             item.path = src
             item.move(copy=True)
@@ -149,10 +149,12 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         self.assertEqual(logs, expected)
 
     def test_list_art(self):
-        config['arttools']['names'] = ['cover', 'extracted']
+        config['art_filename'] = 'cover'
+        config['arttools']['additional_names'] = ['manual']
 
         paths = []
         album = self.__create_album()
+        paths += [self.__copy_art_to_album(300, 300, album, 'manual.png')]
         paths += [self.__copy_art_to_album(200, 200, album, 'cover.png')]
         paths += [self.__copy_art_to_album(300, 300, album, 'extracted.png')]
         self.__copy_art_to_album(250, 240, album, 'dummy.png')
@@ -174,14 +176,17 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         with capture_log('beets.arttools') as logs:
             self.run_command('listart', 'AlbumB')
         expected = ['arttools: ' + util.displayable_path(path) for path in
-                    sorted(paths[2:])]
+                    sorted(paths[3:])]
         self.assertEqual(sorted(logs), expected)
 
     def test_list_art_verbose(self):
-        config['arttools']['names'] = ['cover', 'extracted']
+        config['art_filename'] = 'cover'
+        config['arttools']['additional_names'] = ['manual']
 
         paths = []
         album = self.__create_album()
+        paths += [self.__copy_art_to_album(200, 200, album, 'manual.png') +
+                  ' (200 x 200) AR:1.0']
         paths += [self.__copy_art_to_album(200, 200, album, 'cover.png') +
                   ' (200 x 200) AR:1.0']
         paths += [self.__copy_art_to_album(250, 240, album, 'extracted.png') +
@@ -207,7 +212,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         with capture_log('beets.arttools') as logs:
             self.run_command('listart', '-v', 'AlbumB')
         expected = ['arttools: ' + util.displayable_path(path) for path in
-                    sorted(paths[2:])]
+                    sorted(paths[3:])]
         self.assertEqual(sorted(logs), expected)
 
     def test_copy_bound_art(self):
@@ -378,3 +383,17 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         self.assertSize(albums[2].artpath, 300, 300)
         self.assertIsNotNone(albums[3].artpath)
         self.assertSize(albums[3].artpath, 100, 100)
+
+    def test_collect_art(self):
+        config['arttools']['collect_extract'] = False
+        config['arttools']['collect_fetch_sources'] = []
+
+        album = self.__create_album('Artist', 'Album With Art', 200, 200,
+                                    src_file='image.mp3')
+
+        self.run_command('collectart')
+        self.assertNotExists(os.path.join(album.path, 'extracted.png'))
+
+        config['arttools']['collect_extract'] = True
+        self.run_command('collectart')
+        self.assertExists(os.path.join(album.path, 'extracted.png'))
