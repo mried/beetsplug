@@ -119,6 +119,18 @@ class ArtToolsPlugin(BeetsPlugin):
                                          help='collects all configured cover'
                                               'arts')
         collect_art_command.func = self.collect_art
+        collect_art_command.parser.add_option('-f', '--force', dest='force',
+                                              action='store_true',
+                                              default=False,
+                                              help='Force extraction or '
+                                                   'download even if the file '
+                                                   'already exists')
+        collect_art_command.parser.add_option('-v', '--verbose',
+                                              dest='verbose',
+                                              action='store_true',
+                                              default=False,
+                                              help='Output verbose logging '
+                                                   'information')
 
         return [list_bound_art_command, list_bad_bound_art_command,
                 copy_bound_art_command, choose_art_command,
@@ -308,22 +320,48 @@ class ArtToolsPlugin(BeetsPlugin):
             self._log.info(u"Extracting cover arts for matched albums...")
             extracter = EmbedCoverArtPlugin()
             success = 0
+            skipped = 0
             for album in albums:
                 artpath = normpath(os.path.join(album.path, 'extracted'))
+                if self._art_file_exists(artpath) and not opts.force:
+                    skipped += 1
+                    if opts.verbose:
+                        self._log.info(u"  Skipping extraction for '{0}': "
+                                       u"file already exists.", album)
+                    continue
                 if extracter.extract_first(artpath, album.items()):
                     success += 1
-            self._log.info(u"Extracted cover art for {0} of {1} albums",
-                           success, len(albums))
+                    if opts.verbose:
+                        self._log.info(u"  Extracted art for '{0}'.",
+                                       album)
+                elif opts.verbose:
+                    self._log.info(u"  Could not extract art for '{0}'.",
+                                   album)
+            self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} Total: "
+                           u"{3}",
+                           success, skipped, len(albums) - success - skipped,
+                           len(albums))
 
         if len(self.config['collect_fetch_sources'].get()) > 0:
             config['fetchart'].get()['remote_priority'] = True
             for source in self.config['collect_fetch_sources'].as_str_seq():
-                self._log.info(u"Fetching album arts using source {0}", source)
+                self._log.info(u"Fetching album arts using source '{0}'",
+                               source)
                 success = 0
+                skipped = 0
                 config['fetchart'].get()['sources'] = [source]
                 artname = 'fetched{0}'.format(source.title())
                 fetcher = FetchArtPlugin()
                 for album in albums:
+                    if self._art_file_exists(os.path.join(album.path,
+                                                          artname))\
+                            and not opts.force:
+                        skipped += 1
+                        if opts.verbose:
+                            self._log.info(u"  Skipping fetch for '{0}': file "
+                                           u"already exists.", album)
+                        continue
+
                     filename = fetcher.art_for_album(album, None)
                     if filename:
                         extension = os.path.splitext(filename)[1]
@@ -331,8 +369,28 @@ class ArtToolsPlugin(BeetsPlugin):
                                                         artname + extension))
                         shutil.move(filename, artpath)
                         success += 1
-                self._log.info(u"  Found {0} of {1} cover arts.", success,
+                        if opts.verbose:
+                            self._log.info(u"  Fetched art for '{0}'.",
+                                           album)
+                    elif opts.verbose:
+                        self._log.info(u"  Could not fetch art for '{0}'.",
+                                       album)
+                self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} "
+                               u"Total: {3}",
+                               success, skipped, len(albums) - success - skipped,
                                len(albums))
+
+    @staticmethod
+    def _art_file_exists(path):
+        """Checks if an art file with a given name exists within a folder.
+        The path is spitted into the the filename and the rest. The filename
+        must not have an extension - all extensions will match.
+        """
+        path, filename = os.path.split(path)
+        for current_file in os.listdir(path):
+            if os.path.splitext(current_file)[0] == filename:
+                return True
+        return False
 
     def _get_image_info(self, path):
         """Extracts some informations about the image at the given path.
