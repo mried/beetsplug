@@ -56,8 +56,8 @@ class ArtToolsPlugin(BeetsPlugin):
         copy_bound_art_command.parser.add_option('-d', '--dir', dest='dir',
                                                  help='The directory to copy '
                                                       'the images to')
-        copy_bound_art_command.parser.add_option('-n', '--no-action',
-                                                 dest='noAction',
+        copy_bound_art_command.parser.add_option('-p', '--pretend',
+                                                 dest='pretend',
                                                  action='store_true',
                                                  default=False,
                                                  help='do not copy anything, '
@@ -67,8 +67,8 @@ class ArtToolsPlugin(BeetsPlugin):
         choose_art_command = Subcommand('chooseart',
                                         help='chooses the best album art file')
         choose_art_command.func = self.choose_art
-        choose_art_command.parser.add_option('-n', '--no-action',
-                                             dest='noAction',
+        choose_art_command.parser.add_option('-p', '--pretend',
+                                             dest='pretend',
                                              action='store_true',
                                              default=False,
                                              help='do not change anything, '
@@ -81,8 +81,8 @@ class ArtToolsPlugin(BeetsPlugin):
                                                     'filenames which are not '
                                                     'used')
         delete_unused_art_command.func = self.delete_unused_arts
-        delete_unused_art_command.parser.add_option('-n', '--no-action',
-                                                    dest='noAction',
+        delete_unused_art_command.parser.add_option('-p', '--pretend',
+                                                    dest='pretend',
                                                     action='store_true',
                                                     default=False,
                                                     help='do not delete, only '
@@ -175,7 +175,7 @@ class ArtToolsPlugin(BeetsPlugin):
                                util.displayable_path(old_path),
                                util.displayable_path(new_path))
 
-                if not opts.noAction:
+                if not opts.pretend:
                     shutil.copy(old_path, new_path)
 
     def choose_art(self, lib, opts, args):
@@ -215,7 +215,7 @@ class ArtToolsPlugin(BeetsPlugin):
                                    util.displayable_path(chosen_image))
                     new_image = os.path.join(album_path, art_filename +
                                              os.path.splitext(chosen_image)[1])
-                    if not opts.noAction:
+                    if not opts.pretend:
                         if chosen_image != new_image:
                             shutil.copy(chosen_image, new_image)
                         album.set_art(new_image)
@@ -235,7 +235,7 @@ class ArtToolsPlugin(BeetsPlugin):
                             art_filename:
                         self._log.info(u"removing {0}",
                                        util.displayable_path(image))
-                        if not opts.noAction:
+                        if not opts.pretend:
                             os.remove(util.syspath(image))
 
     def list_art(self, lib, opts, args):

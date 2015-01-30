@@ -243,7 +243,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
             self.assertExists(f)
             os.remove(f)
 
-        self.run_command('copyboundart', '-d', self.temp_dir, '-n')
+        self.run_command('copyboundart', '-d', self.temp_dir, '-p')
         for f in files:
             self.assertNotExists(f)
 
@@ -277,7 +277,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         for path in paths:
             self.assertExists(path)
 
-        self.run_command('deleteunusedart', '-n')
+        self.run_command('deleteunusedart', '-p')
         for path in paths:
             self.assertExists(path)
 
@@ -346,7 +346,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
             for i in range(0, len(albums)):
                 albums[i] = self.lib.albums(albums[i].album).get()
 
-        self.run_command('chooseart', '-n')
+        self.run_command('chooseart', '-p')
         update_albums()
         self.assertIsNone(albums[0].artpath)
         self.assertIsNone(albums[1].artpath)
