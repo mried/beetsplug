@@ -380,14 +380,13 @@ class ArtToolsPlugin(BeetsPlugin):
                                success, skipped, len(albums) - success - skipped,
                                len(albums))
 
-    @staticmethod
-    def _art_file_exists(path):
+    def _art_file_exists(self, path):
         """Checks if an art file with a given name exists within a folder.
         The path is spitted into the the filename and the rest. The filename
         must not have an extension - all extensions will match.
         """
         path, filename = os.path.split(path)
-        for current_file in os.listdir(path):
+        for current_file in self._get_image_files(path):
             if os.path.splitext(current_file)[0] == filename:
                 return True
         return False
@@ -408,24 +407,31 @@ class ArtToolsPlugin(BeetsPlugin):
             aspect_ratio = 1 / aspect_ratio
         return width, height, size, aspect_ratio
 
+    @staticmethod
+    def _get_image_files(path):
+        """Returns a list of files which seems to be images. This is determined
+        using the file extension."""
+        images = []
+        for fileName in os.listdir(path):
+            for ext in ['jpg', 'jpeg', 'png', 'bmp']:
+                if fileName.lower().endswith('.' + ext) and os.path.isfile(
+                        os.path.join(path, fileName)):
+                    images.append(os.path.join(path, fileName))
+                    break
+        return images
+
     def _get_art_files(self, path):
         """Searches for image files matching to the possible cover art names.
         The resulting list is sorted such that the images are ordered like the
         configured names."""
+        # Find all files that look like images in the directory.
+        images = self._get_image_files(path)
+
         names = self.config['additional_names'].as_str_seq()
         names.append(config['art_filename'].get())
         names.append('extracted')
         for source in self.config['collect_fetch_sources'].as_str_seq():
             names.append('fetched{0}'.format(source.title()))
-
-        # Find all files that look like images in the directory.
-        images = []
-        for fileName in os.listdir(path):
-            for ext in ['png', 'jpg', 'jpeg']:
-                if fileName.lower().endswith('.' + ext) and os.path.isfile(
-                        os.path.join(path, fileName)):
-                    images.append(os.path.join(path, fileName))
-                    break
 
         filtered = []
         for name in names:
