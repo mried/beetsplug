@@ -23,6 +23,10 @@ from beets.ui import Subcommand
 from beets import config
 from beets import ui
 from beets import util
+from beets.util import normpath
+import beetsplug
+from beetsplug.embedart import EmbedCoverArtPlugin
+from beetsplug.fetchart import FetchArtPlugin
 
 
 class ArtToolsPlugin(BeetsPlugin):
@@ -32,8 +36,10 @@ class ArtToolsPlugin(BeetsPlugin):
         self.config.add({
             'aspect_ratio_thresh': 0.8,
             'size_thresh': 200,
-            'names': ['cover'],
+            'additional_names': [],
             'collage_tilesize': 200,
+            'collect_extract': True,
+            'collect_fetch_sources': beetsplug.fetchart.SOURCES_ALL
         })
 
     def commands(self):
@@ -109,10 +115,27 @@ class ArtToolsPlugin(BeetsPlugin):
                                               help='The size of each cover '
                                                    'art')
 
+        collect_art_command = Subcommand('collectart',
+                                         help='collects all configured cover'
+                                              'arts')
+        collect_art_command.func = self.collect_art
+        collect_art_command.parser.add_option('-f', '--force', dest='force',
+                                              action='store_true',
+                                              default=False,
+                                              help='Force extraction or '
+                                                   'download even if the file '
+                                                   'already exists')
+        collect_art_command.parser.add_option('-v', '--verbose',
+                                              dest='verbose',
+                                              action='store_true',
+                                              default=False,
+                                              help='Output verbose logging '
+                                                   'information')
+
         return [list_bound_art_command, list_bad_bound_art_command,
                 copy_bound_art_command, choose_art_command,
                 list_art_command, art_collage_command,
-                delete_unused_art_command]
+                delete_unused_art_command, collect_art_command]
 
     def list_bound_art(self, lib, opts, args):
         """List all art files bound to albums selected by the query"""
@@ -156,7 +179,7 @@ class ArtToolsPlugin(BeetsPlugin):
 
         query = ui.decargs(args)
         self._log.info(u"Copying all album art to {0}",
-                       util.displayable_path(dest_dir),)
+                       util.displayable_path(dest_dir), )
         albums = lib.albums(query)
         for album in albums:
             if album.artpath:
@@ -190,10 +213,10 @@ class ArtToolsPlugin(BeetsPlugin):
                 if images and len(images) > 0:
                     filtered_images = []
                     for image in images:
-                        width, height, size, aspect_ratio = self.\
+                        width, height, size, aspect_ratio = self. \
                             _get_image_info(util.syspath(image))
                         if aspect_ratio >= aspect_ratio_thresh and \
-                           size >= size_thresh:
+                                        size >= size_thresh:
                             filtered_images.append(image)
 
                     if len(filtered_images) == 0:
@@ -231,7 +254,7 @@ class ArtToolsPlugin(BeetsPlugin):
             album_path = album.item_dir()
             if album_path:
                 for image in self._get_art_files(album_path):
-                    if os.path.splitext(os.path.basename(image))[0] !=\
+                    if os.path.splitext(os.path.basename(image))[0] != \
                             art_filename:
                         self._log.info(u"removing {0}",
                                        util.displayable_path(image))
@@ -291,6 +314,83 @@ class ArtToolsPlugin(BeetsPlugin):
 
         result.save(out_file)
 
+    def collect_art(self, lib, opts, args):
+        albums = lib.albums(ui.decargs(args))
+        if self.config['collect_extract'].get():
+            self._log.info(u"Extracting cover arts for matched albums...")
+            extracter = EmbedCoverArtPlugin()
+            success = 0
+            skipped = 0
+            for album in albums:
+                artpath = normpath(os.path.join(album.path, 'extracted'))
+                if self._art_file_exists(artpath) and not opts.force:
+                    skipped += 1
+                    if opts.verbose:
+                        self._log.info(u"  Skipping extraction for '{0}': "
+                                       u"file already exists.", album)
+                    continue
+                if extracter.extract_first(artpath, album.items()):
+                    success += 1
+                    if opts.verbose:
+                        self._log.info(u"  Extracted art for '{0}'.",
+                                       album)
+                elif opts.verbose:
+                    self._log.info(u"  Could not extract art for '{0}'.",
+                                   album)
+            self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} Total: "
+                           u"{3}",
+                           success, skipped, len(albums) - success - skipped,
+                           len(albums))
+
+        if len(self.config['collect_fetch_sources'].get()) > 0:
+            config['fetchart'].get()['remote_priority'] = True
+            for source in self.config['collect_fetch_sources'].as_str_seq():
+                self._log.info(u"Fetching album arts using source '{0}'",
+                               source)
+                success = 0
+                skipped = 0
+                config['fetchart'].get()['sources'] = [source]
+                artname = 'fetched{0}'.format(source.title())
+                fetcher = FetchArtPlugin()
+                for album in albums:
+                    if self._art_file_exists(os.path.join(album.path,
+                                                          artname))\
+                            and not opts.force:
+                        skipped += 1
+                        if opts.verbose:
+                            self._log.info(u"  Skipping fetch for '{0}': file "
+                                           u"already exists.", album)
+                        continue
+
+                    filename = fetcher.art_for_album(album, None)
+                    if filename:
+                        extension = os.path.splitext(filename)[1]
+                        artpath = normpath(os.path.join(album.path,
+                                                        artname + extension))
+                        shutil.move(filename, artpath)
+                        success += 1
+                        if opts.verbose:
+                            self._log.info(u"  Fetched art for '{0}'.",
+                                           album)
+                    elif opts.verbose:
+                        self._log.info(u"  Could not fetch art for '{0}'.",
+                                       album)
+                self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} "
+                               u"Total: {3}",
+                               success, skipped, len(albums) - success - skipped,
+                               len(albums))
+
+    def _art_file_exists(self, path):
+        """Checks if an art file with a given name exists within a folder.
+        The path is spitted into the the filename and the rest. The filename
+        must not have an extension - all extensions will match.
+        """
+        path, filename = os.path.split(path)
+        for current_file in self._get_image_files(path):
+            if os.path.splitext(current_file)[0] == filename:
+                return True
+        return False
+
     def _get_image_info(self, path):
         """Extracts some informations about the image at the given path.
         Returns the width, height, size and aspect ratio of the image.
@@ -307,20 +407,31 @@ class ArtToolsPlugin(BeetsPlugin):
             aspect_ratio = 1 / aspect_ratio
         return width, height, size, aspect_ratio
 
-    def _get_art_files(self, path):
-        """Searches for image files matching to the possible names configured.
-        The resulting list is sorted such that the images are ordered like the
-        configured names."""
-        names = self.config['names'].as_str_seq()
-
-        # Find all files that look like images in the directory.
+    @staticmethod
+    def _get_image_files(path):
+        """Returns a list of files which seems to be images. This is determined
+        using the file extension."""
         images = []
         for fileName in os.listdir(path):
-            for ext in ['png', 'jpg', 'jpeg']:
+            for ext in ['jpg', 'jpeg', 'png', 'bmp']:
                 if fileName.lower().endswith('.' + ext) and os.path.isfile(
                         os.path.join(path, fileName)):
                     images.append(os.path.join(path, fileName))
                     break
+        return images
+
+    def _get_art_files(self, path):
+        """Searches for image files matching to the possible cover art names.
+        The resulting list is sorted such that the images are ordered like the
+        configured names."""
+        # Find all files that look like images in the directory.
+        images = self._get_image_files(path)
+
+        names = self.config['additional_names'].as_str_seq()
+        names.append(config['art_filename'].get())
+        names.append('extracted')
+        for source in self.config['collect_fetch_sources'].as_str_seq():
+            names.append('fetched{0}'.format(source.title()))
 
         filtered = []
         for name in names:
