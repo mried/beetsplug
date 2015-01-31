@@ -1,5 +1,5 @@
 # This file is part of beets.
-# Copyright 2014, Malte Ried
+# Copyright 2015, Malte Ried
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -40,8 +40,8 @@ class AutoSingletonPlugin(BeetsPlugin):
             return self.get_singletons(task)
         return task
 
-    def get_singletons(self, task):
-        task.choice_flag = action.SKIP
+    @staticmethod
+    def get_singletons(task):
         new_tasks = []
         for item in task.items:
             new_tasks.append(SingletonImportTask(task.toppath, item))
