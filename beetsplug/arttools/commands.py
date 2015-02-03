@@ -11,36 +11,25 @@
 #
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-
 import os
 import shutil
 import math
 
 from PIL import Image
 
-from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand
 from beets import config
 from beets import ui
 from beets import util
 from beets.util import normpath
-import beetsplug
 from beetsplug.embedart import EmbedCoverArtPlugin
 from beetsplug.fetchart import FetchArtPlugin
 
 
-class ArtToolsPlugin(BeetsPlugin):
-    def __init__(self):
-        super(ArtToolsPlugin, self).__init__()
-
-        self.config.add({
-            'aspect_ratio_thresh': 0.8,
-            'size_thresh': 200,
-            'additional_names': [],
-            'collage_tilesize': 200,
-            'collect_extract': True,
-            'collect_fetch_sources': beetsplug.fetchart.SOURCES_ALL
-        })
+class Commands:
+    def __init__(self, config, log):
+        self.config = config
+        self._log = log
 
     def commands(self):
         list_bound_art_command = Subcommand('listboundart',
@@ -136,7 +125,6 @@ class ArtToolsPlugin(BeetsPlugin):
                 copy_bound_art_command, choose_art_command,
                 list_art_command, art_collage_command,
                 delete_unused_art_command, collect_art_command]
-
     def list_bound_art(self, lib, opts, args):
         """List all art files bound to albums selected by the query"""
         albums = lib.albums(ui.decargs(args))
