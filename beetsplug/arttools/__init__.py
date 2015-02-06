@@ -12,10 +12,20 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
+import os
+import shutil
+import math
+
+from PIL import Image
+
 from beets.plugins import BeetsPlugin
-from beets.ui import Subcommand
 import beetsplug
-from beetsplug.arttools.commands import Commands
+from beets.ui import Subcommand
+from beets import config
+from beets import ui
+from beets import util
+from beets.util import normpath
+from beetsplug.embedart import EmbedCoverArtPlugin
 from beetsplug.fetchart import FetchArtPlugin
 
 
@@ -34,9 +44,97 @@ class ArtToolsPlugin(BeetsPlugin):
             'port': 8338
         })
 
-        self.base_commands = Commands(self.config, self._log)
 
     def commands(self):
+        list_bound_art_command = Subcommand('listboundart',
+                                            help='lists all cover arts of '
+                                                 'selected albums')
+        list_bound_art_command.func = self.list_bound_art
+
+        list_bad_bound_art_command = Subcommand('listbadboundart',
+                                                help='lists all cover arts of '
+                                                     'selected albums which '
+                                                     'are bad')
+        list_bad_bound_art_command.func = self.list_bad_bound_art
+
+        copy_bound_art_command = Subcommand('copyboundart',
+                                            help='copys all cover arts of the '
+                                                 'selected albums into a '
+                                                 'single directory')
+        copy_bound_art_command.func = self.copy_bound_art
+        copy_bound_art_command.parser.add_option('-d', '--dir', dest='dir',
+                                                 help='The directory to copy '
+                                                      'the images to')
+        copy_bound_art_command.parser.add_option('-p', '--pretend',
+                                                 dest='pretend',
+                                                 action='store_true',
+                                                 default=False,
+                                                 help='do not copy anything, '
+                                                      'only print files this '
+                                                      'command would copy')
+
+        choose_art_command = Subcommand('chooseart',
+                                        help='chooses the best album art file')
+        choose_art_command.func = self.choose_art
+        choose_art_command.parser.add_option('-p', '--pretend',
+                                             dest='pretend',
+                                             action='store_true',
+                                             default=False,
+                                             help='do not change anything, '
+                                                  'only print files this '
+                                                  'command would choose')
+
+        delete_unused_art_command = Subcommand('deleteunusedart',
+                                               help='deletes all image files '
+                                                    'matching the art '
+                                                    'filenames which are not '
+                                                    'used')
+        delete_unused_art_command.func = self.delete_unused_arts
+        delete_unused_art_command.parser.add_option('-p', '--pretend',
+                                                    dest='pretend',
+                                                    action='store_true',
+                                                    default=False,
+                                                    help='do not delete, only '
+                                                         'print files to '
+                                                         'delete')
+
+        list_art_command = Subcommand('listart',
+                                      help='lists all album art files '
+                                           'matching the configured names')
+        list_art_command.func = self.list_art
+        list_art_command.parser.add_option('-v', '--verbose', dest='verbose',
+                                           action='store_true', default=False,
+                                           help='verbose output')
+
+        art_collage_command = Subcommand('artcollage',
+                                         help='creates an image with all '
+                                              'cover arts of the selected '
+                                              'albums')
+        art_collage_command.func = self.art_collage
+        art_collage_command.parser.add_option('-o', '--out', dest='outFile',
+                                              help='The name of the image to '
+                                                   'create')
+        art_collage_command.parser.add_option('-s', '--size', dest='tilesize',
+                                              help='The size of each cover '
+                                                   'art')
+
+        collect_art_command = Subcommand('collectart',
+                                         help='collects all configured cover'
+                                              'arts')
+        collect_art_command.func = self.collect_art
+        collect_art_command.parser.add_option('-f', '--force', dest='force',
+                                              action='store_true',
+                                              default=False,
+                                              help='Force extraction or '
+                                                   'download even if the file '
+                                                   'already exists')
+        collect_art_command.parser.add_option('-v', '--verbose',
+                                              dest='verbose',
+                                              action='store_true',
+                                              default=False,
+                                              help='Output verbose logging '
+                                                   'information')
+
         web_choose_command = Subcommand('webchoose',
                                         help='starts a webserver to choose art'
                                              ' files manually')
@@ -45,10 +143,324 @@ class ArtToolsPlugin(BeetsPlugin):
                                              default=False, help='debug mode')
         web_choose_command.func = self.web_choose
 
-        return self.base_commands.commands() + [web_choose_command]
+        return [list_bound_art_command, list_bad_bound_art_command,
+                copy_bound_art_command, choose_art_command,
+                list_art_command, art_collage_command,
+                delete_unused_art_command, collect_art_command,
+                web_choose_command]
+    def list_bound_art(self, lib, opts, args):
+        """List all art files bound to albums selected by the query"""
+        albums = lib.albums(ui.decargs(args))
+        for image in self._get_bound_art_files(albums):
+            self._log.info(util.displayable_path(image))
+
+    def list_bad_bound_art(self, lib, opts, args):
+        """List all art files bound to albums selected by the query which
+            do not match the rules for a good album art."""
+        aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
+        size_thresh = self.config['size_thresh'].get()
+
+        self._log.info(
+            u"Art is bad if its aspect ratio is < {0} or either width or "
+            u"height is < {1}", aspect_ratio_thresh, size_thresh)
+
+        albums = lib.albums(ui.decargs(args))
+        for image in self._get_bound_art_files(albums):
+            try:
+                width, height, size, aspect_ratio = self.get_image_info(image)
+                if aspect_ratio < aspect_ratio_thresh or size < size_thresh:
+                    self._log.info(u'{0} ({1} x {2}) AR:{3:.4}',
+                                   util.displayable_path(image), width,
+                                   height, aspect_ratio)
+            except Exception:
+                pass
+
+    def copy_bound_art(self, lib, opts, args):
+        if not opts.dir:
+            self._log.info(u"Usage: beet copyart -d <destination directory> "
+                           u"[<query>]")
+            return
+
+        dest_dir = os.path.normpath(opts.dir)
+        if not os.path.exists(dest_dir) or not os.path.isdir(dest_dir):
+            self._log.info(
+                u"'{0}' does not exist or is not a directory. "
+                u"Stopping.", util.displayable_path(dest_dir))
+            return
+
+        query = ui.decargs(args)
+        self._log.info(u"Copying all album art to {0}",
+                       util.displayable_path(dest_dir), )
+        albums = lib.albums(query)
+        for album in albums:
+            if album.artpath:
+                new_filename = album.evaluate_template(u"$albumartist - "
+                                                       u"$album",
+                                                       for_path=True)
+                if album.albumtype == u'compilation':
+                    new_filename = u"" + album.album
+                # Add the file extension
+                new_filename += os.path.splitext(album.artpath)[1]
+
+                old_path = util.syspath(album.artpath)
+                new_path = util.syspath(os.path.join(dest_dir, new_filename))
+
+                self._log.info(u"Copy '{0}' to '{1}'",
+                               util.displayable_path(old_path),
+                               util.displayable_path(new_path))
+
+                if not opts.pretend:
+                    shutil.copy(old_path, new_path)
+
+    def choose_art(self, lib, opts, args):
+        aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
+        size_thresh = self.config['size_thresh'].get()
+        art_filename = config["art_filename"].get()
+        albums = lib.albums(ui.decargs(args))
+        for album in albums:
+            album_path = album.item_dir()
+            if album_path:
+                images = self.get_art_files(album_path)
+                if images and len(images) > 0:
+                    filtered_images = []
+                    for image in images:
+                        width, height, size, aspect_ratio = self. \
+                            get_image_info(util.syspath(image))
+                        if aspect_ratio >= aspect_ratio_thresh and \
+                                        size >= size_thresh:
+                            filtered_images.append(image)
+
+                    if len(filtered_images) == 0:
+                        self._log.debug(
+                            u"no image matched rules for album '{0}', "
+                            u"choosing first", album.album)
+                        chosen_image = images[0]
+                    else:
+                        # Get the file size for each image
+                        file_sizes = map(
+                            lambda file_name: os.stat(util.syspath(file_name))
+                            .st_size, filtered_images)
+                        # Find the image with the greatest file size
+                        max_value = max(file_sizes)
+                        max_index = file_sizes.index(max_value)
+
+                        chosen_image = images[max_index]
+                    self._log.info(u"choosed {0}",
+                                   util.displayable_path(chosen_image))
+                    new_image = os.path.join(album_path, art_filename +
+                                             os.path.splitext(chosen_image)[1])
+                    if not opts.pretend:
+                        if chosen_image != new_image:
+                            shutil.copy(chosen_image, new_image)
+                        album.set_art(new_image)
+                        album.store()
+                else:
+                    self._log.debug(
+                        u"no image found for album {0}", album.album)
+
+    def delete_unused_arts(self, lib, opts, args):
+        art_filename = config["art_filename"].get()
+        albums = lib.albums(ui.decargs(args))
+        for album in albums:
+            album_path = album.item_dir()
+            if album_path:
+                for image in self.get_art_files(album_path):
+                    if os.path.splitext(os.path.basename(image))[0] != \
+                            art_filename:
+                        self._log.info(u"removing {0}",
+                                       util.displayable_path(image))
+                        if not opts.pretend:
+                            os.remove(util.syspath(image))
+
+    def list_art(self, lib, opts, args):
+        """Prints all found images matching the configured names."""
+        albums = lib.albums(ui.decargs(args))
+        for album in albums:
+            albumpath = album.item_dir()
+            if albumpath:
+                images = self.get_art_files(albumpath)
+                for image in images:
+                    info = u""
+                    if opts.verbose:
+                        width, height, size, aspect_ratio = \
+                            self.get_image_info(util.syspath(image))
+                        info = u" ({0} x {1}) AR:{2:.4}".format(width, height,
+                                                                aspect_ratio)
+                    self._log.info(util.displayable_path(image) + info)
+
+    def art_collage(self, lib, opts, args):
+        albums = lib.albums(ui.decargs(args))
+        images = self._get_bound_art_files(albums)
+        tile_size = opts.tilesize or self.config['collage_tilesize'].get()
+        out_file = os.path.abspath(opts.outFile)
+
+        if not opts.outFile:
+            self._log.info(u"Usage: artcollage -f <output file> [-s <size>] "
+                           u"[query]")
+            return
+
+        if os.path.isdir(out_file):
+            out_file = os.path.join(out_file, "covers.jpg")
+
+        if not os.path.exists(os.path.split(out_file)[0]):
+            self._log.error(u"Destination does not exist.")
+            return
+
+        cols = int(math.floor(math.sqrt(len(images))))
+        rows = int(math.ceil(len(images) / float(cols)))
+
+        result = Image.new("RGB",
+                           (cols * tile_size, rows * tile_size),
+                           "black")
+
+        for row in xrange(0, rows):
+            for col in xrange(0, cols):
+                if row * cols + col >= len(images):
+                    break
+                image = Image.open(util.syspath(images[row * cols + col]))
+                if not image:
+                    continue
+                image = image.resize((tile_size, tile_size))
+                result.paste(image, (col * tile_size, row * tile_size))
+
+        result.save(out_file)
+
+    def collect_art(self, lib, opts, args):
+        albums = lib.albums(ui.decargs(args))
+        if self.config['collect_extract'].get():
+            self._log.info(u"Extracting cover arts for matched albums...")
+            extracter = EmbedCoverArtPlugin()
+            success = 0
+            skipped = 0
+            for album in albums:
+                artpath = normpath(os.path.join(album.path, 'extracted'))
+                if self._art_file_exists(artpath) and not opts.force:
+                    skipped += 1
+                    if opts.verbose:
+                        self._log.info(u"  Skipping extraction for '{0}': "
+                                       u"file already exists.", album)
+                    continue
+                if extracter.extract_first(artpath, album.items()):
+                    success += 1
+                    if opts.verbose:
+                        self._log.info(u"  Extracted art for '{0}'.",
+                                       album)
+                elif opts.verbose:
+                    self._log.info(u"  Could not extract art for '{0}'.",
+                                   album)
+            self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} Total: "
+                           u"{3}",
+                           success, skipped, len(albums) - success - skipped,
+                           len(albums))
+
+        if len(self.config['collect_fetch_sources'].get()) > 0:
+            config['fetchart'].get()['remote_priority'] = True
+            for source in self.config['collect_fetch_sources'].as_str_seq():
+                self._log.info(u"Fetching album arts using source '{0}'",
+                               source)
+                success = 0
+                skipped = 0
+                config['fetchart'].get()['sources'] = [source]
+                artname = 'fetched{0}'.format(source.title())
+                fetcher = FetchArtPlugin()
+                for album in albums:
+                    if self._art_file_exists(os.path.join(album.path,
+                                                          artname))\
+                            and not opts.force:
+                        skipped += 1
+                        if opts.verbose:
+                            self._log.info(u"  Skipping fetch for '{0}': file "
+                                           u"already exists.", album)
+                        continue
+
+                    filename = fetcher.art_for_album(album, None)
+                    if filename:
+                        extension = os.path.splitext(filename)[1]
+                        artpath = normpath(os.path.join(album.path,
+                                                        artname + extension))
+                        shutil.move(filename, artpath)
+                        success += 1
+                        if opts.verbose:
+                            self._log.info(u"  Fetched art for '{0}'.",
+                                           album)
+                    elif opts.verbose:
+                        self._log.info(u"  Could not fetch art for '{0}'.",
+                                       album)
+                self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} "
+                               u"Total: {3}",
+                               success, skipped, len(albums) - success - skipped,
+                               len(albums))
 
     def web_choose(self, lib, opts, args):
         import webchooser
-        webchooser.web_choose(self.config['host'].get(unicode),
-                              self.config['port'].get(int),
-                              opts.debug, lib, self.config, self._log)
+        webchooser.web_choose(self, lib, self._log, opts.debug)
+
+    def _art_file_exists(self, path):
+        """Checks if an art file with a given name exists within a folder.
+        The path is spitted into the the filename and the rest. The filename
+        must not have an extension - all extensions will match.
+        """
+        path, filename = os.path.split(path)
+        for current_file in self._get_image_files(path):
+            if os.path.splitext(current_file)[0] == filename:
+                return True
+        return False
+
+    def get_image_info(self, path):
+        """Extracts some informations about the image at the given path.
+        Returns the width, height, size and aspect ratio of the image.
+        The size equals width if width < height."""
+        im = Image.open(util.syspath(path))
+        if not im:
+            self._log.warn(u"badart: not able to open file '{0}'", path)
+            return
+        width = im.size[0]
+        height = im.size[1]
+        size = width if width < height else height
+        aspect_ratio = float(width) / float(height)
+        if aspect_ratio > 1:
+            aspect_ratio = 1 / aspect_ratio
+        return width, height, size, aspect_ratio
+
+    @staticmethod
+    def _get_image_files(path):
+        """Returns a list of files which seems to be images. This is determined
+        using the file extension."""
+        images = []
+        for fileName in os.listdir(path):
+            for ext in ['jpg', 'jpeg', 'png', 'bmp']:
+                if fileName.lower().endswith('.' + ext) and os.path.isfile(
+                        os.path.join(path, fileName)):
+                    images.append(os.path.join(path, fileName))
+                    break
+        return images
+
+    def get_art_files(self, path):
+        """Searches for image files matching to the possible cover art names.
+        The resulting list is sorted such that the images are ordered like the
+        configured names."""
+        # Find all files that look like images in the directory.
+        images = self._get_image_files(path)
+
+        names = self.config['additional_names'].as_str_seq()
+        names.append(config['art_filename'].get())
+        names.append('extracted')
+        for source in self.config['collect_fetch_sources'].as_str_seq():
+            names.append('fetched{0}'.format(source.title()))
+
+        filtered = []
+        for name in names:
+            for image in images:
+                if os.path.splitext(os.path.basename(image))[0] == name:
+                    filtered.append(image)
+
+        return filtered
+
+    @staticmethod
+    def _get_bound_art_files(albums):
+        """Returns a list of all cover arts bound the list of albums given."""
+        images = []
+        for album in albums:
+            if album.artpath:
+                images.append(album.artpath)
+        return images

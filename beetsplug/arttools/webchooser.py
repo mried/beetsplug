@@ -17,24 +17,27 @@ import os
 from flask import Flask, g
 import flask
 from werkzeug.exceptions import abort
-from beetsplug.arttools import Commands
+
 from beetsplug.web import QueryConverter
+
 
 app = Flask(__name__)
 app.url_map.converters['query'] = QueryConverter
 
 
-def web_choose(host, port, debug, lib, config, log):
+def web_choose(plugin, lib, log, debug):
     app.config['lib'] = lib
-    app.config['config'] = config
+    app.config['plugin'] = plugin
     app.config['log'] = log
+    host = plugin.config['host'].get(unicode)
+    port = plugin.config['port'].get(int)
     app.run(host=host, port=port, debug=debug, threaded=True)
 
 
 @app.before_request
 def before_request():
     g.lib = app.config['lib']
-    g.config = app.config['config']
+    g.plugin = app.config['plugin']
     g.log = app.config['log']
 
 
@@ -61,11 +64,10 @@ def art(album_id, file_name):
 def query(queries):
     albums = g.lib.albums(queries)
 
-    commands = Commands(g.config, g.log)
     result = []
     for album in albums:
         art_files = []
-        for art_file in commands._get_art_files(album.path):
+        for art_file in g.plugin.get_art_files(album.path):
             art_files.append(os.path.split(art_file)[1])
         result.append({'id': album.id,
                        'title': str(album),
