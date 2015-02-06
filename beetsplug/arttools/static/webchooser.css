@@ -1,0 +1,29 @@
+#content h1 {
+    background: #DDDDDD;
+    width: 99%;
+    margin: 10px 2px 3px 2px;
+    padding: 0px 4px;
+}
+
+.album {
+    clear: both;
+}
+
+.art img {
+    width: 200px;
+}
+
+.art {
+    background: #DDDDDD;
+    float: left;
+    margin: 2px;
+    padding: 5px;
+}
+
+.bad {
+    color: #990000;
+}
+
+.good {
+    color: #009900;
+}

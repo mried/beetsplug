@@ -3,13 +3,15 @@
     <head>
         <title>beets - choose art</title>
 
-        <!--link rel="stylesheet"
-        href="{{ url_for('static', filename='beets.css') }}" type="text/css"-->
+        <link rel="stylesheet" href="{{ url_for('static', filename='webchooser.css') }}" type="text/css">
 
         <script src="{{ url_for('static', filename='jquery-2.1.3.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='underscore-min.js') }}">
-        </script>
+        <script src="{{ url_for('static', filename='underscore-min.js') }}"></script>
         <script src="{{ url_for('static', filename='backbone.js') }}"></script>
+        <script type="text/javascript">
+            var size_thresh = {{ size_thresh }};
+            var ar_thresh = {{ ar_thresh }};
+        </script>
         <script src="{{ url_for('static', filename='webchooser.js') }}"></script>
     </head>
     <body>
@@ -26,13 +28,33 @@
 
         <!-- Templates. -->
         <script type="text/template" id="album-template">
-            <div class="title"><%= title %></div>
-            <div class="arts"></div>
+            <h1><%= title %></h1>
         </script>
         <script type="text/template" id="art-template">
-            <div>
-                <img src="/art/<%= album_id %>/<%= filename %>">
-            </div>
+            <img src="/art/<%= album_id %>/<%= file_name %>">
+            <table>
+                <tr>
+                    <td>Name</td><td><%= file_name %></td>
+                </tr>
+                <tr>
+                    <td>Size</td>
+                    <td class="<%
+                        if(width < size_thresh || height < size_thresh)
+                            print('bad');
+                        else
+                            print('good');
+                        %>"><%= width %>x<%= height %></td>
+                </tr>
+                <tr>
+                    <td>AR</td>
+                    <td class="<%
+                        if(aspect_ratio < ar_thresh)
+                            print('bad');
+                        else
+                            print('good');
+                        %>"><%= aspect_ratio.toFixed(2) %></td>
+                </tr>
+            </table>
         </script>
     </body>
 </html>

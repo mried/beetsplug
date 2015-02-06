@@ -43,7 +43,10 @@ def before_request():
 
 @app.route("/")
 def home():
-    return flask.render_template('index.html')
+    size_thresh = g.plugin.config['size_thresh'].get()
+    aspect_ratio_thresh = g.plugin.config['aspect_ratio_thresh'].get()
+    return flask.render_template('index.html', size_thresh=size_thresh,
+                                 ar_thresh=aspect_ratio_thresh)
 
 
 @app.route("/query/")
@@ -68,7 +71,11 @@ def query(queries):
     for album in albums:
         art_files = []
         for art_file in g.plugin.get_art_files(album.path):
-            art_files.append(os.path.split(art_file)[1])
+            width, height, _, aspect_ratio = g.plugin.get_image_info(art_file)
+            art_files.append({'file_name': os.path.split(art_file)[1],
+                              'width': width,
+                              'height': height,
+                              'aspect_ratio': aspect_ratio})
         result.append({'id': album.id,
                        'title': str(album),
                        'art_files': art_files})
