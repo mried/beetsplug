@@ -13,6 +13,7 @@
 # included in all copies or substantial portions of the Software.
 
 from beets.plugins import BeetsPlugin
+from beets.ui import Subcommand
 import beetsplug
 from beetsplug.arttools.commands import Commands
 from beetsplug.fetchart import FetchArtPlugin
@@ -28,10 +29,26 @@ class ArtToolsPlugin(BeetsPlugin):
             'additional_names': [],
             'collage_tilesize': 200,
             'collect_extract': True,
-            'collect_fetch_sources': beetsplug.fetchart.SOURCES_ALL
+            'collect_fetch_sources': beetsplug.fetchart.SOURCES_ALL,
+            'host': u'127.0.0.1',
+            'port': 8338
         })
 
         self.base_commands = Commands(self.config, self._log)
 
     def commands(self):
-        return self.base_commands.commands()
+        web_choose_command = Subcommand('webchoose',
+                                        help='starts a webserver to choose art'
+                                             ' files manually')
+        web_choose_command.parser.add_option('-d', '--debug',
+                                             action='store_true',
+                                             default=False, help='debug mode')
+        web_choose_command.func = self.web_choose
+
+        return self.base_commands.commands() + [web_choose_command]
+
+    def web_choose(self, lib, opts, args):
+        import webchooser
+        webchooser.web_choose(self.config['host'].get(unicode),
+                              self.config['port'].get(int),
+                              opts.debug, lib, self.config, self._log)

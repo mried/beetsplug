@@ -1,0 +1,74 @@
+# This file is part of beets.
+# Copyright 2015, Malte Ried
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+import json
+import os
+
+from flask import Flask, g
+import flask
+from werkzeug.exceptions import abort
+from beetsplug.arttools import Commands
+from beetsplug.web import QueryConverter
+
+app = Flask(__name__)
+app.url_map.converters['query'] = QueryConverter
+
+
+def web_choose(host, port, debug, lib, config, log):
+    app.config['lib'] = lib
+    app.config['config'] = config
+    app.config['log'] = log
+    app.run(host=host, port=port, debug=debug, threaded=True)
+
+
+@app.before_request
+def before_request():
+    g.lib = app.config['lib']
+    g.config = app.config['config']
+    g.log = app.config['log']
+
+
+@app.route("/")
+def home():
+    return flask.render_template('index.html')
+
+
+@app.route("/query/")
+def no_query():
+    return query(None)
+
+
+@app.route("/art/<album_id>/<file_name>")
+def art(album_id, file_name):
+    if os.sep in file_name:
+        abort(404)
+    album = g.lib.albums(u"id:" + album_id).get()
+
+    return flask.send_file(os.path.join(album.path, file_name))
+
+
+@app.route("/query/<query:queries>")
+def query(queries):
+    albums = g.lib.albums(queries)
+
+    commands = Commands(g.config, g.log)
+    result = []
+    for album in albums:
+        art_files = []
+        for art_file in commands._get_art_files(album.path):
+            art_files.append(os.path.split(art_file)[1])
+        result.append({'id': album.id,
+                       'title': str(album),
+                       'art_files': art_files})
+
+    return json.dumps(result)
