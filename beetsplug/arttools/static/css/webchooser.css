@@ -33,6 +33,11 @@ body {
     padding: 5px;
 }
 
+.art:hover {
+    border: solid 1px #000000;
+    margin: 1px;
+}
+
 .art td {
     padding-right: 5px;
 }
@@ -43,4 +48,8 @@ body {
 
 .good {
     color: #009900;
+}
+
+.badArt {
+    background: #FFDDDD;
 }
