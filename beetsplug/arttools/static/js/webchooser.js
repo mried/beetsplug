@@ -19,6 +19,15 @@ app.Router = Backbone.Router.extend({
 // Model.
 app.Art = Backbone.Model.extend({
     urlRoot: '/art',
+    isBadSize: function() {
+        return this.get('width') < size_thresh || this.get('height') < size_thresh;
+    },
+    isBadAspectRatio: function() {
+        return this.get('aspect_ratio') < ar_thresh;
+    },
+    isBadArt: function() {
+        return this.isBadSize() || this.isBadAspectRatio();
+    }
 });
 app.Arts = Backbone.Collection.extend({
     urlRoot: '/arts',
@@ -55,8 +64,9 @@ app.AlbumView = Backbone.View.extend({
         var foo = this.$el;
         this.model.arts.each(function(art) {
             var view = new app.ArtView({model: art});
-            foo.append(view.render().el);
+            foo.children(".arts").append(view.render().el);
         });
+        this.$el.children(".arts").append("<div style='clear: both'/>");
         return this;
     },
 });
@@ -67,6 +77,7 @@ app.ArtView = Backbone.View.extend({
     template: _.template($('#art-template').html()),
     render: function() {
         this.$el.html(this.template(this.model.toJSON()));
+        this.$el.addClass(this.model.isBadArt() ? 'badArt' : 'goodArt');
         return this;
     }
 });
@@ -78,7 +89,7 @@ app.AppView = Backbone.View.extend({
     },
     querySubmit: function(ev) {
         ev.preventDefault();
-        router.navigate('query/' + escape($('#query').val()), true);
+        app.router.navigate('query/' + escape($('#query').val()), true);
     },
     initialize: function() {
         this.shownAlbums = null;

@@ -1,0 +1,46 @@
+body {
+    padding-top: 70px;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-bottom: 10px;
+}
+
+#content h1 {
+    background: #DDDDDD;
+    width: 100%;
+    margin: 10px 0px 3px 0px;
+    padding: 0px 4px;
+    border-radius: 10px 10px 0 0
+}
+
+.album {
+    clear: both;
+}
+
+.arts {
+    width: 100%;
+    background: #DDDDDD;
+    border-radius: 0 0 10px 10px
+}
+
+.art img {
+    width: 200px;
+}
+
+.art {
+    float: left;
+    margin: 2px;
+    padding: 5px;
+}
+
+.art td {
+    padding-right: 5px;
+}
+
+.bad {
+    color: #990000;
+}
+
+.good {
+    color: #009900;
+}
