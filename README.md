@@ -6,6 +6,7 @@ stable so use them at your own risk...
 ## Plugins
 Currently the following plugins are available:
 * [arttools](https://github.com/mried/beetsplug/wiki/arttools): A toolbox for album art handling.
+* [autosingleton](https://github.com/mried/beetsplug/wiki/autosingleton): Automatically decide if files should be imported as singletons.
 * [dirfields](https://github.com/mried/beetsplug/wiki/dirfields): Adds a field for each directory of its original path.
 * [regexfilefilter](https://github.com/mried/beetsplug/wiki/regexfilefilter): Filter the files to import using regular expressions.
  
