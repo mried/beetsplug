@@ -23,8 +23,12 @@ body {
     border-radius: 0 0 10px 10px
 }
 
-.art img {
+.artcontainer {
     width: 200px;
+    height: 200px;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
 }
 
 .art {
@@ -40,6 +44,10 @@ body {
 
 .art td {
     padding-right: 5px;
+}
+
+.art table {
+    width: 100%;
 }
 
 .bad {

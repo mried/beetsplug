@@ -17,6 +17,7 @@ import os
 from flask import Flask, g
 import flask
 from werkzeug.exceptions import abort
+from beets import util
 
 from beetsplug.web import QueryConverter
 
@@ -60,7 +61,7 @@ def art(album_id, file_name):
         abort(404)
     album = g.lib.albums(u"id:" + album_id).get()
 
-    return flask.send_file(os.path.join(album.path, file_name))
+    return flask.send_file(os.path.join(util.syspath(album.path), file_name))
 
 
 @app.route("/query/<query:queries>")

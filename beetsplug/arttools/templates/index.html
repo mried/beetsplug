@@ -38,7 +38,7 @@
             <div class="arts"></div>
         </script>
         <script type="text/template" id="art-template">
-            <img src="/art/<%= album_id %>/<%= file_name %>">
+            <div class="artcontainer" style="background-image: url(/art/<%= album_id %>/<%= file_name %>)"></div>
             <table>
                 <tr>
                     <td>Name</td><td><%= file_name %></td>

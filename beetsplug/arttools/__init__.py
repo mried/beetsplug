@@ -22,6 +22,7 @@ from beets.plugins import BeetsPlugin
 import beetsplug
 from beets.ui import Subcommand
 from beets import config
+from beets import logging
 from beets import ui
 from beets import util
 from beets.util import normpath
@@ -148,6 +149,7 @@ class ArtToolsPlugin(BeetsPlugin):
                 list_art_command, art_collage_command,
                 delete_unused_art_command, collect_art_command,
                 web_choose_command]
+
     def list_bound_art(self, lib, opts, args):
         """List all art files bound to albums selected by the query"""
         albums = lib.albums(ui.decargs(args))
@@ -329,7 +331,8 @@ class ArtToolsPlugin(BeetsPlugin):
         albums = lib.albums(ui.decargs(args))
         if self.config['collect_extract'].get():
             self._log.info(u"Extracting cover arts for matched albums...")
-            extracter = EmbedCoverArtPlugin()
+            extractor = EmbedCoverArtPlugin()
+            extractor._log.setLevel(logging.ERROR)
             success = 0
             skipped = 0
             for album in albums:
@@ -340,7 +343,7 @@ class ArtToolsPlugin(BeetsPlugin):
                         self._log.info(u"  Skipping extraction for '{0}': "
                                        u"file already exists.", album)
                     continue
-                if extracter.extract_first(artpath, album.items()):
+                if extractor.extract_first(artpath, album.items()):
                     success += 1
                     if opts.verbose:
                         self._log.info(u"  Extracted art for '{0}'.",
@@ -376,9 +379,9 @@ class ArtToolsPlugin(BeetsPlugin):
                     filename = fetcher.art_for_album(album, None)
                     if filename:
                         extension = os.path.splitext(filename)[1]
-                        artpath = normpath(os.path.join(album.path,
-                                                        artname + extension))
-                        shutil.move(filename, artpath)
+                        artpath = os.path.join(util.syspath(album.path),
+                                               artname + extension)
+                        shutil.move(filename, util.syspath(normpath(artpath)))
                         success += 1
                         if opts.verbose:
                             self._log.info(u"  Fetched art for '{0}'.",
@@ -388,8 +391,8 @@ class ArtToolsPlugin(BeetsPlugin):
                                        album)
                 self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} "
                                u"Total: {3}",
-                               success, skipped, len(albums) - success - skipped,
-                               len(albums))
+                               success, skipped,
+                               len(albums) - success - skipped, len(albums))
 
     def web_choose(self, lib, opts, args):
         import webchooser
@@ -400,9 +403,11 @@ class ArtToolsPlugin(BeetsPlugin):
         The path is spitted into the the filename and the rest. The filename
         must not have an extension - all extensions will match.
         """
-        path, filename = os.path.split(path)
-        for current_file in self._get_image_files(path):
-            if os.path.splitext(current_file)[0] == filename:
+        path, filename = os.path.split(util.syspath(path))
+        for current_path in self._get_image_files(path):
+            current_file_name = os.path.split(util.syspath(current_path))[1]
+            current_file_name = os.path.splitext(current_file_name)[0]
+            if current_file_name == filename:
                 return True
         return False
 
@@ -412,7 +417,8 @@ class ArtToolsPlugin(BeetsPlugin):
         The size equals width if width < height."""
         im = Image.open(util.syspath(path))
         if not im:
-            self._log.warn(u"badart: not able to open file '{0}'", path)
+            self._log.warn(u"badart: not able to open file '{0}'",
+                           util.displayable_path(path))
             return
         width = im.size[0]
         height = im.size[1]
@@ -427,6 +433,7 @@ class ArtToolsPlugin(BeetsPlugin):
         """Returns a list of files which seems to be images. This is determined
         using the file extension."""
         images = []
+        path = util.syspath(path)
         for fileName in os.listdir(path):
             for ext in ['jpg', 'jpeg', 'png', 'bmp']:
                 if fileName.lower().endswith('.' + ext) and os.path.isfile(
