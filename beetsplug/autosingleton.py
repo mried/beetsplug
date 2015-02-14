@@ -13,6 +13,7 @@
 # included in all copies or substantial portions of the Software.
 import os
 import re
+from beets import util
 from beets.importer import ImportTask, SingletonImportTask, action, \
     SentinelImportTask, ArchiveImportTask
 from beets.plugins import BeetsPlugin
@@ -38,7 +39,7 @@ class AutoSingletonPlugin(BeetsPlugin):
 
         if self.is_singleton(task):
             return self.get_singletons(task)
-        return task
+        return [task]
 
     @staticmethod
     def get_singletons(task):
@@ -49,21 +50,22 @@ class AutoSingletonPlugin(BeetsPlugin):
         return new_tasks
 
     def is_singleton(self, task):
-        path, folder = os.path.split(task.paths[0])
+        task_path = util.syspath(task.paths[0])
+        path, folder = os.path.split(task_path)
         if folder.lower() == 'misc':
             # Singletons
             return True
 
         # Are there any directories in the folder of the current task?
-        for sub_entry in os.listdir(task.paths[0]):
-            sub_entry = os.path.join(task.paths[0], sub_entry)
+        for sub_entry in os.listdir(task_path):
+            sub_entry = os.path.join(task_path, sub_entry)
             if os.path.isdir(sub_entry):
                 # Singletons
                 return True
 
         # Do any of the file names of all items does not start with two digits?
         pattern = re.compile('\\d\\d+ - ', re.IGNORECASE)
-        for path in [item['path'] for item in task.items]:
+        for path in [util.syspath(item['path']) for item in task.items]:
             _, file_name = os.path.split(path)
             if path.endswith('.mp3') and not pattern.match(file_name):
                 # Singleton
