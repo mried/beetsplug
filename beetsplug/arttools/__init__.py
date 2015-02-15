@@ -379,7 +379,7 @@ class ArtToolsPlugin(BeetsPlugin):
                     filename = fetcher.art_for_album(album, None)
                     if filename:
                         extension = os.path.splitext(filename)[1]
-                        artpath = os.path.join(util.syspath(album.path),
+                        artpath = os.path.join(album.path.decode('utf-8'),
                                                artname + extension)
                         shutil.move(filename, util.syspath(normpath(artpath)))
                         success += 1

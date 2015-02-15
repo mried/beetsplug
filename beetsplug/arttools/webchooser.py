@@ -61,7 +61,7 @@ def art(album_id, file_name):
         abort(404)
     album = g.lib.albums(u"id:" + album_id).get()
 
-    return flask.send_file(os.path.join(util.syspath(album.path), file_name))
+    return flask.send_file(os.path.join(album.path.decode('utf-8'), file_name))
 
 
 @app.route("/query/<query:queries>")

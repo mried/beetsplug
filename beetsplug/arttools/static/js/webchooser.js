@@ -79,6 +79,13 @@ app.ArtView = Backbone.View.extend({
         this.$el.html(this.template(this.model.toJSON()));
         this.$el.addClass(this.model.isBadArt() ? 'badArt' : 'goodArt');
         return this;
+    },
+    events: {
+        'click .artcontainer': 'artClick'
+    },
+    artClick: function(ev) {
+        $('#artview img').attr('src', $(ev.target).css('background-image').slice(5, -2));
+        $('#artview').css('display', 'block');
     }
 });
 // Main app view.
@@ -86,10 +93,14 @@ app.AppView = Backbone.View.extend({
     el: $('body'),
     events: {
         'submit #queryForm': 'querySubmit',
+        'click #artview': 'closeArtView'
     },
     querySubmit: function(ev) {
         ev.preventDefault();
         app.router.navigate('query/' + escape($('#query').val()), true);
+    },
+    closeArtView: function(ev) {
+        $('#artview').css('display', 'none');
     },
     initialize: function() {
         this.shownAlbums = null;
