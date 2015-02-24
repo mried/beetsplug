@@ -17,7 +17,7 @@ import os
 from flask import Flask, g
 import flask
 from werkzeug.exceptions import abort
-from beets import util
+from beets.util import bytestring_path
 
 from beetsplug.web import QueryConverter
 
@@ -57,11 +57,12 @@ def no_query():
 
 @app.route("/art/<album_id>/<file_name>")
 def art(album_id, file_name):
+    file_name = bytestring_path(file_name)
     if os.sep in file_name:
         abort(404)
     album = g.lib.albums(u"id:" + album_id).get()
 
-    return flask.send_file(os.path.join(album.path.decode('utf-8'), file_name))
+    return flask.send_file(os.path.join(album.path, file_name))
 
 
 @app.route("/query/<query:queries>")

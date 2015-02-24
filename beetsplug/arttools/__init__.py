@@ -25,7 +25,7 @@ from beets import config
 from beets import logging
 from beets import ui
 from beets import util
-from beets.util import normpath
+from beets.util import normpath, bytestring_path
 from beetsplug.embedart import EmbedCoverArtPlugin
 from beetsplug.fetchart import FetchArtPlugin
 
@@ -364,7 +364,7 @@ class ArtToolsPlugin(BeetsPlugin):
                 success = 0
                 skipped = 0
                 config['fetchart'].get()['sources'] = [source]
-                artname = 'fetched{0}'.format(source.title())
+                artname = b'fetched{0}'.format(source.title())
                 fetcher = FetchArtPlugin()
                 for album in albums:
                     if self._art_file_exists(os.path.join(album.path,
@@ -378,9 +378,9 @@ class ArtToolsPlugin(BeetsPlugin):
 
                     filename = fetcher.art_for_album(album, None)
                     if filename:
+                        filename = bytestring_path(filename)
                         extension = os.path.splitext(filename)[1]
-                        artpath = os.path.join(album.path.decode('utf-8'),
-                                               artname + extension)
+                        artpath = os.path.join(album.path, artname + extension)
                         shutil.move(filename, util.syspath(normpath(artpath)))
                         success += 1
                         if opts.verbose:
