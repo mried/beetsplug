@@ -215,50 +215,54 @@ class ArtToolsPlugin(BeetsPlugin):
                     shutil.copy(old_path, new_path)
 
     def choose_art(self, lib, opts, args):
-        aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
-        size_thresh = self.config['size_thresh'].get()
-        art_filename = config["art_filename"].get()
+        art_filename = bytestring_path(config["art_filename"].get())
         albums = lib.albums(ui.decargs(args))
         for album in albums:
-            album_path = album.item_dir()
-            if album_path:
-                images = self.get_art_files(album_path)
-                if images and len(images) > 0:
-                    filtered_images = []
-                    for image in images:
-                        width, height, size, aspect_ratio = self. \
-                            get_image_info(util.syspath(image))
-                        if aspect_ratio >= aspect_ratio_thresh and \
-                                        size >= size_thresh:
-                            filtered_images.append(image)
+            chosen_image = bytestring_path(self.get_chosen_art(album))
+            if not opts.pretend and chosen_image:
+                new_image = os.path.join(album.item_dir(), art_filename +
+                                         os.path.splitext(chosen_image)[1])
+                if chosen_image != new_image:
+                    shutil.copy(chosen_image, new_image)
+                album.set_art(new_image)
+                album.store()
 
-                    if len(filtered_images) == 0:
-                        self._log.debug(
-                            u"no image matched rules for album '{0}', "
-                            u"choosing first", album.album)
-                        chosen_image = images[0]
-                    else:
-                        # Get the file size for each image
-                        file_sizes = map(
-                            lambda file_name: os.stat(util.syspath(file_name))
-                            .st_size, filtered_images)
-                        # Find the image with the greatest file size
-                        max_value = max(file_sizes)
-                        max_index = file_sizes.index(max_value)
+    def get_chosen_art(self, album):
+        aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
+        size_thresh = self.config['size_thresh'].get()
+        album_path = album.item_dir()
+        if album_path:
+            images = self.get_art_files(album_path)
+            if images and len(images) > 0:
+                filtered_images = []
+                for image in images:
+                    width, height, size, aspect_ratio = self. \
+                        get_image_info(util.syspath(image))
+                    if aspect_ratio >= aspect_ratio_thresh and \
+                       size >= size_thresh:
+                        filtered_images.append(image)
 
-                        chosen_image = images[max_index]
-                    self._log.info(u"choosed {0}",
-                                   util.displayable_path(chosen_image))
-                    new_image = os.path.join(album_path, art_filename +
-                                             os.path.splitext(chosen_image)[1])
-                    if not opts.pretend:
-                        if chosen_image != new_image:
-                            shutil.copy(chosen_image, new_image)
-                        album.set_art(new_image)
-                        album.store()
-                else:
+                if len(filtered_images) == 0:
                     self._log.debug(
-                        u"no image found for album {0}", album.album)
+                        u"no image matched rules for album '{0}', "
+                        u"choosing first", album.album)
+                    chosen_image = images[0]
+                else:
+                    # Get the file size for each image
+                    file_sizes = map(
+                        lambda file_name: os.stat(util.syspath(file_name))
+                        .st_size, filtered_images)
+                    # Find the image with the greatest file size
+                    max_value = max(file_sizes)
+                    max_index = file_sizes.index(max_value)
+
+                    chosen_image = images[max_index]
+                self._log.info(u"choosed {0}",
+                               util.displayable_path(chosen_image))
+                return chosen_image
+            else:
+                self._log.debug(
+                    u"no image found for album {0}", album.album)
 
     def delete_unused_arts(self, lib, opts, args):
         art_filename = config["art_filename"].get()

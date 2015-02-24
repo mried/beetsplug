@@ -41,6 +41,10 @@
             <div class="arts"></div>
         </script>
         <script type="text/template" id="art-template">
+            <div class="art-infos">
+                <%= bound_art ? '<i class="glyphicon glyphicon-link"></i>' : '' %>
+                <%= would_choose ? '<i class="glyphicon glyphicon-star"></i>' : '' %>
+            </div>
             <div class="artcontainer" style="background-image: url(/art/<%= album_id %>/<%= file_name %>)"></div>
             <table>
                 <tr>

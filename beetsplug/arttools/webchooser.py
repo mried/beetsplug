@@ -72,12 +72,21 @@ def query(queries):
     result = []
     for album in albums:
         art_files = []
+        bound_art = None
+        if album.artpath:
+            bound_art = os.path.split(album.artpath)[1]
+        chosen_art = g.plugin.get_chosen_art(album)
+        if chosen_art:
+            chosen_art = os.path.split(chosen_art)[1]
         for art_file in g.plugin.get_art_files(album.path):
             width, height, _, aspect_ratio = g.plugin.get_image_info(art_file)
-            art_files.append({'file_name': os.path.split(art_file)[1],
+            file_name = os.path.split(art_file)[1]
+            art_files.append({'file_name': file_name,
                               'width': width,
                               'height': height,
-                              'aspect_ratio': aspect_ratio})
+                              'aspect_ratio': aspect_ratio,
+                              'bound_art': file_name == bound_art,
+                              'would_choose': file_name == chosen_art})
         result.append({'id': album.id,
                        'title': str(album),
                        'art_files': art_files})
