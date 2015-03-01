@@ -58,6 +58,10 @@ body {
     float: right;
     margin-top: 5px;
     margin-right: 5px;
+    border-radius: 3px;
+    padding-left: 3px;
+    padding-right: 3px;
+    background-color: rgba(255, 255, 255, 0.5);
 }
 
 .glyphicon-link {
@@ -70,10 +74,12 @@ body {
 
 .glyphicon-ok {
     color: #00BB00;
+    cursor: pointer;
 }
 
 .glyphicon-remove {
     color: #BB0000;
+    cursor: pointer;
 }
 
 .bad {
