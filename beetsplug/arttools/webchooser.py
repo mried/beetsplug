@@ -55,16 +55,6 @@ def no_query():
     return query(None)
 
 
-@app.route("/art/<album_id>/<file_name>")
-def art(album_id, file_name):
-    file_name = bytestring_path(file_name)
-    if os.sep in file_name:
-        abort(404)
-    album = g.lib.albums(u"id:" + album_id).get()
-
-    return flask.send_file(syspath(os.path.join(album.path, file_name)))
-
-
 @app.route("/query/<query:queries>")
 def query(queries):
     albums = g.lib.albums(queries)
@@ -92,3 +82,13 @@ def query(queries):
                        'art_files': art_files})
 
     return json.dumps(result)
+
+
+@app.route("/art/<album_id>/<file_name>")
+def art(album_id, file_name):
+    file_name = bytestring_path(file_name)
+    if os.sep in file_name:
+        abort(404)
+    album = g.lib.albums(u"id:" + album_id).get()
+
+    return flask.send_file(syspath(os.path.join(album.path, file_name)))

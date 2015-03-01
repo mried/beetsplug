@@ -5,9 +5,12 @@ var app = {};
 // Routes.
 app.Router = Backbone.Router.extend({
     routes: {
-        "query/:query": "itemQuery",
+        "query/(:query)": "itemQuery",
     },
     itemQuery: function(query) {
+        if(!query) {
+            query = "";
+        }
         var queryURL = query.split(/\s+/).map(encodeURIComponent).join('/');
         $.getJSON('/query/' + queryURL, function(data) {
             var results = new app.Albums(data);
@@ -97,7 +100,8 @@ app.AppView = Backbone.View.extend({
     },
     querySubmit: function(ev) {
         ev.preventDefault();
-        app.router.navigate('query/' + escape($('#query').val()), true);
+        var query = $('#query').val();
+        app.router.navigate('query/' + escape(query), {trigger: true});
     },
     closeArtView: function(ev) {
         $('#artview').css('display', 'none');
