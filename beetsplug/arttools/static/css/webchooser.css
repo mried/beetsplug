@@ -20,8 +20,7 @@ body {
 .arts {
     width: 100%;
     background: #DDDDDD;
-    border-radius: 0 0 10px 10px
-}
+    border-radius: 0 0 10px 10px}
 
 .artcontainer {
     width: 200px;
@@ -62,6 +61,16 @@ body {
     padding-left: 3px;
     padding-right: 3px;
     background-color: rgba(255, 255, 255, 0.5);
+}
+
+.album-title-right {
+    float: right;
+    margin-top: 5px;
+    margin-right: 5px;
+}
+
+.glyphicon-refresh {
+    cursor: pointer;
 }
 
 .glyphicon-link {

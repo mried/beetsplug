@@ -51,44 +51,73 @@ def home():
 
 
 @app.route("/query/")
-def no_query():
-    return query(None)
+def get_no_query_json():
+    return get_query_json(None)
 
 
 @app.route("/query/<query:queries>")
-def query(queries):
+def get_query_json(queries):
     albums = g.lib.albums(queries)
 
     result = []
     for album in albums:
-        art_files = []
-        bound_art = None
-        if album.artpath:
-            bound_art = os.path.split(album.artpath)[1]
-        chosen_art = g.plugin.get_chosen_art(album)
-        if chosen_art:
-            chosen_art = os.path.split(chosen_art)[1]
-        for art_file in g.plugin.get_art_files(album.path):
-            width, height, _, aspect_ratio = g.plugin.get_image_info(art_file)
-            file_name = os.path.split(art_file)[1]
-            art_files.append({'file_name': file_name,
-                              'width': width,
-                              'height': height,
-                              'aspect_ratio': aspect_ratio,
-                              'bound_art': file_name == bound_art,
-                              'would_choose': file_name == chosen_art})
-        result.append({'id': album.id,
-                       'title': str(album),
-                       'art_files': art_files})
+        result.append(get_album_dict(album))
 
     return json.dumps(result)
 
 
+@app.route("/album/<album_id>")
+def get_album_json(album_id):
+    album = g.lib.albums(u"id:" + album_id).get()
+
+    return json.dumps(get_album_dict(album))
+
+
 @app.route("/art/<album_id>/<file_name>")
-def art(album_id, file_name):
+def get_art_file(album_id, file_name):
     file_name = bytestring_path(file_name)
     if os.sep in file_name:
         abort(404)
     album = g.lib.albums(u"id:" + album_id).get()
 
     return flask.send_file(syspath(os.path.join(album.path, file_name)))
+
+
+@app.route("/deleteArt/<album_id>/<file_name>")
+def delete_art_file(album_id, file_name):
+    file_name = bytestring_path(file_name)
+    if os.sep in file_name:
+        abort(404)
+
+    album = g.lib.albums(u"id:" + album_id).get()
+    if not album:
+        abort(404)
+
+    art_path = syspath(os.path.join(album.path, file_name))
+    if os.path.isfile(art_path):
+        os.remove(art_path)
+    else:
+        abort(404)
+
+    return json.dumps({'result': 'ok'})
+
+
+def get_album_dict(album):
+    art_files = []
+    bound_art = None
+    if album.artpath:
+        bound_art = os.path.split(album.artpath)[1]
+    chosen_art = g.plugin.get_chosen_art(album)
+    if chosen_art:
+        chosen_art = os.path.split(chosen_art)[1]
+    for art_file in g.plugin.get_art_files(album.path):
+        width, height, _, aspect_ratio = g.plugin.get_image_info(art_file)
+        file_name = os.path.split(art_file)[1]
+        art_files.append({'file_name': file_name,
+                          'width': width,
+                          'height': height,
+                          'aspect_ratio': aspect_ratio,
+                          'bound_art': file_name == bound_art,
+                          'would_choose': file_name == chosen_art})
+    album_dict = {'id': album.id, 'title': str(album), 'art_files': art_files}
+    return album_dict
