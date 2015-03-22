@@ -2,10 +2,12 @@ $(function() {
 
 var app = {};
 
-// Routes.
+// ====================== Router ======================
+
 app.Router = Backbone.Router.extend({
     routes: {
-        "query/(:query)": "itemQuery",
+        "": "itemQuery",
+        "query/(:query)": "itemQuery"
     },
     itemQuery: function(query) {
         if(!query) {
@@ -19,9 +21,11 @@ app.Router = Backbone.Router.extend({
     }
 });
 
-// Model.
+// ====================== Models ======================
+
 app.Art = Backbone.Model.extend({
     urlRoot: '/art',
+    idAttribute: 'file_name',
     isBadSize: function() {
         return this.get('width') < size_thresh || this.get('height') < size_thresh;
     },
@@ -32,47 +36,65 @@ app.Art = Backbone.Model.extend({
         return this.isBadSize() || this.isBadAspectRatio();
     }
 });
+
 app.Arts = Backbone.Collection.extend({
     urlRoot: '/arts',
     model: app.Art
 });
+
 app.Album = Backbone.Model.extend({
     urlRoot: '/album',
+    idAttribute: 'id',
     initialize: function(data) {
+        this.parse(data);
+    },
+    parse: function(data) {
+        var album = this;
         var arts_data = _.map(data.art_files,
                           function(d) {
-                            d['album_id'] = data.id;
+                            d['album'] = album;
                             return d;
                           });
         var arts = new app.Arts(arts_data);
         this.arts = arts;
     }
 });
+
 app.Albums = Backbone.Collection.extend({
+    url: '/query/',
     model: app.Album
 });
 
-// Album view
+// ====================== Views ======================
+
 app.AlbumView = Backbone.View.extend({
     tagName: "div",
     attributes: {"class": "album"},
     template: _.template($('#album-template').html()),
-/*    events: {
-        'click': 'select',
-    },*/
+    events: {
+        'click .refresh-album': 'refreshAlbum'
+    },
     initialize: function() {
+        this.listenTo(this.model, 'change', this.render);
+        this.listenTo(this.model, 'reset', this.render);
+        this.listenTo(this.model, 'sync', this.render);
+        _.bindAll(this, 'renderArt');
     },
     render: function() {
         this.$el.html(this.template(this.model.toJSON()));
-        var foo = this.$el;
-        this.model.arts.each(function(art) {
-            var view = new app.ArtView({model: art});
-            foo.children(".arts").append(view.render().el);
-        });
-        this.$el.children(".arts").append("<div style='clear: both'/>");
+        this.model.arts.forEach(this.renderArt)
+        this.$el.children(".arts").append("<div style='clear: both'></div>");
         return this;
     },
+    renderArt: function(art) {
+        var artView = new app.ArtView({model: art});
+        this.$('div.arts').append(artView.render().el);
+    },
+    refreshAlbum: function() {
+        this.model.fetch();
+    }
 });
+
 // Art view
 app.ArtView = Backbone.View.extend({
     tagName: "div",
@@ -84,13 +106,26 @@ app.ArtView = Backbone.View.extend({
         return this;
     },
     events: {
-        'click .artcontainer': 'artClick'
+        'click .artcontainer': 'artClick',
+        'click .art-remove': 'artRemove',
+        'click .art-choose': 'artChoose'
     },
     artClick: function(ev) {
-        $('#artview img').attr('src', $(ev.target).css('background-image').slice(5, -2));
+        var imageUrl = $(ev.target).css('background-image').slice(4, -1);
+        imageUrl = imageUrl.replace(/^"?|"?$/g, "");
+        $('#artview img').attr('src', imageUrl);
         $('#artview').css('display', 'block');
+    },
+    artRemove: function(ev) {
+        var album = this.model.get('album');
+        $.getJSON('/deleteArt/' + album.get('id') + '/' + this.model.get('file_name'), function(data) {
+            album.fetch();
+        });
+    },
+    artChoose: function(ev) {
     }
 });
+
 // Main app view.
 app.AppView = Backbone.View.extend({
     el: $('body'),
@@ -117,7 +152,7 @@ app.AppView = Backbone.View.extend({
             album.entryView = view;
             $('#content').append(view.render().el);
         });
-    },
+    }
 });
 app.router = new app.Router();
 app.appView = new app.AppView();

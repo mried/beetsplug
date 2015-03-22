@@ -37,6 +37,9 @@
 
         <!-- Templates. -->
         <script type="text/template" id="album-template">
+            <div class="album-title-right">
+                <i class="glyphicon glyphicon-refresh refresh-album" title="Reload the album."></i>
+            </div>
             <h1><%= title %></h1>
             <div class="arts"></div>
         </script>
@@ -45,14 +48,14 @@
                 <%= bound_art ? '<i class="glyphicon glyphicon-link" title="This cover art is bound to the album."></i>' : '' %>
                 <%= would_choose ? '<i class="glyphicon glyphicon-star" title="This cover art would be chosen automatically."></i>' : '' %>
             </div>
-            <div class="artcontainer" style="background-image: url(/art/<%= album_id %>/<%= file_name %>)"></div>
+            <div class="artcontainer" style="background-image: url(/art/<%= album.get('id') %>/<%= file_name %>)"></div>
             <table>
                 <tr>
-                    <td>Name</td><td><%= file_name %></td><td><i class="glyphicon glyphicon-remove" title="Delete this cover art."></i></td>
+                    <td>Name</td><td><%= file_name %></td><td><i class="glyphicon glyphicon-remove art-remove" title="Delete this cover art."></i></td>
                 </tr>
                 <tr>
                     <td>Size</td>
-                    <td class="<%= width < size_thresh || height < size_thresh ? 'bad' : 'good' %>"><%= width %>x<%= height %></td><td><i class="glyphicon glyphicon-ok" title="Bound this cover art."></i></td>
+                    <td class="<%= width < size_thresh || height < size_thresh ? 'bad' : 'good' %>"><%= width %>x<%= height %></td><td><i class="glyphicon glyphicon-ok art-choose" title="Bound this cover art."></i></td>
                 </tr>
                 <tr>
                     <td>AR</td>
