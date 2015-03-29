@@ -34,6 +34,7 @@ body {
     float: left;
     margin: 2px;
     padding: 5px;
+    display: inline-table;
 }
 
 .art:hover {

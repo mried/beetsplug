@@ -41,6 +41,11 @@ class ArtToolsPlugin(BeetsPlugin):
             'collage_tilesize': 200,
             'collect_extract': True,
             'collect_fetch_sources': beetsplug.fetchart.SOURCES_ALL,
+            'chooseart_weightings': {
+                'aspect_ratio': 1,
+                'pixels': 0.8,
+                'bytes': 0.2
+            },
             'host': u'127.0.0.1',
             'port': 8338
         })
@@ -234,35 +239,68 @@ class ArtToolsPlugin(BeetsPlugin):
         if album_path:
             images = self.get_art_files(album_path)
             if images and len(images) > 0:
-                filtered_images = []
+                attributed_images = []
                 for image in images:
                     width, height, size, aspect_ratio = self. \
                         get_image_info(util.syspath(image))
-                    if aspect_ratio >= aspect_ratio_thresh and \
-                       size >= size_thresh:
-                        filtered_images.append(image)
+                    attributed_images.append({'file': image,
+                                              'bytes': os.stat(
+                                                  util.syspath(image)).st_size,
+                                              'width': width,
+                                              'height': height,
+                                              'size': size,
+                                              'pixels': width * height,
+                                              'ar': aspect_ratio})
+
+                filtered_images = \
+                    filter(lambda i: i['ar'] >= aspect_ratio_thresh
+                           and i['size'] >= size_thresh,
+                           attributed_images)
 
                 if len(filtered_images) == 0:
                     self._log.debug(
-                        u"no image matched rules for album '{0}', "
-                        u"choosing first", album.album)
-                    chosen_image = images[0]
-                else:
-                    # Get the file size for each image
-                    file_sizes = map(
-                        lambda file_name: os.stat(util.syspath(file_name))
-                        .st_size, filtered_images)
-                    # Find the image with the greatest file size
-                    max_value = max(file_sizes)
-                    max_index = file_sizes.index(max_value)
+                        u"no image matched rules for album '{0}'", album.album)
+                    filtered_images = attributed_images
 
-                    chosen_image = images[max_index]
-                self._log.info(u"choosed {0}",
+                # Find the best image:
+                # - Sort the images for aspect ratio, size in pixels and size
+                #   in bytes
+                # - Store the ordinals for each sort
+                # - Summarize all ordinals per image (using weightings)
+                # - Choose the one with the lowest sum
+                self.add_points(filtered_images, 'ar', 0.0001)
+                self.add_points(filtered_images, 'pixels')
+                self.add_points(filtered_images, 'bytes')
+
+                weightings = self.config['chooseart_weightings'].get()
+
+                for filtered_image in filtered_images:
+                    filtered_image['points'] = \
+                        filtered_image['ar_points'] * weightings['aspect_ratio'] + \
+                        filtered_image['pixels_points'] * weightings['pixels'] + \
+                        filtered_image['bytes_points'] * weightings['bytes']
+                filtered_images = sorted(filtered_images,
+                                         key=lambda i: i['points'],
+                                         reverse=True)
+
+                chosen_image = filtered_images[0]['file']
+                self._log.info(u"chosen {0}",
                                util.displayable_path(chosen_image))
                 return chosen_image
             else:
                 self._log.debug(
                     u"no image found for album {0}", album.album)
+
+    @staticmethod
+    def add_points(images, field, threshold=1.0):
+        sorted_images = sorted(images, key=lambda image: image[field])
+        ordinal = -1
+        last_value = -1
+        for i in range(len(sorted_images)):
+            if abs(last_value - sorted_images[i][field]) > threshold:
+                last_value = sorted_images[i][field]
+                ordinal += 1
+            sorted_images[i][field + '_points'] = ordinal
 
     def delete_unused_arts(self, lib, opts, args):
         art_filename = config["art_filename"].get()
