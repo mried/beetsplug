@@ -241,8 +241,11 @@ class ArtToolsPlugin(BeetsPlugin):
             if images and len(images) > 0:
                 attributed_images = []
                 for image in images:
-                    width, height, size, aspect_ratio = self. \
-                        get_image_info(util.syspath(image))
+                    try:
+                        width, height, size, aspect_ratio = self. \
+                            get_image_info(util.syspath(image))
+                    except IOError:
+                        continue
                     attributed_images.append({'file': image,
                                               'bytes': os.stat(
                                                   util.syspath(image)).st_size,
@@ -251,6 +254,10 @@ class ArtToolsPlugin(BeetsPlugin):
                                               'size': size,
                                               'pixels': width * height,
                                               'ar': aspect_ratio})
+                # Check if there are still images (maybe we can't get the info
+                # about all the images)
+                if len(attributed_images) == 0:
+                    return None
 
                 filtered_images = \
                     filter(lambda i: i['ar'] >= aspect_ratio_thresh
@@ -302,19 +309,22 @@ class ArtToolsPlugin(BeetsPlugin):
                 ordinal += 1
             sorted_images[i][field + '_points'] = ordinal
 
-    def delete_unused_arts(self, lib, opts, args):
+    def delete_unused_art_of_album(self, album, pretend=False):
         art_filename = config["art_filename"].get()
+        album_path = album.item_dir()
+        if album_path:
+            for image in self.get_art_files(album_path):
+                if os.path.splitext(os.path.basename(image))[0] != \
+                        art_filename:
+                    self._log.info(u"removing {0}",
+                                   util.displayable_path(image))
+                    if not pretend:
+                        os.remove(util.syspath(image))
+
+    def delete_unused_arts(self, lib, opts, args):
         albums = lib.albums(ui.decargs(args))
         for album in albums:
-            album_path = album.item_dir()
-            if album_path:
-                for image in self.get_art_files(album_path):
-                    if os.path.splitext(os.path.basename(image))[0] != \
-                            art_filename:
-                        self._log.info(u"removing {0}",
-                                       util.displayable_path(image))
-                        if not opts.pretend:
-                            os.remove(util.syspath(image))
+            self.delete_unused_art_of_album(album, opts.pretend)
 
     def list_art(self, lib, opts, args):
         """Prints all found images matching the configured names."""

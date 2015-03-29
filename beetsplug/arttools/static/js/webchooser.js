@@ -55,8 +55,7 @@ app.Album = Backbone.Model.extend({
                             d['album'] = album;
                             return d;
                           });
-        var arts = new app.Arts(arts_data);
-        this.arts = arts;
+        this.arts = new app.Arts(arts_data);
     }
 });
 
@@ -82,7 +81,7 @@ app.AlbumView = Backbone.View.extend({
     },
     render: function() {
         this.$el.html(this.template(this.model.toJSON()));
-        this.model.arts.forEach(this.renderArt)
+        this.model.arts.forEach(this.renderArt);
         this.$el.children(".arts").append("<div style='clear: both'></div>");
         return this;
     },
@@ -110,19 +109,24 @@ app.ArtView = Backbone.View.extend({
         'click .art-remove': 'artRemove',
         'click .art-choose': 'artChoose'
     },
-    artClick: function(ev) {
-        var imageUrl = $(ev.target).css('background-image').slice(4, -1);
-        imageUrl = imageUrl.replace(/^"?|"?$/g, "");
-        $('#artview img').attr('src', imageUrl);
-        $('#artview').css('display', 'block');
-    },
-    artRemove: function(ev) {
+    artClick: function() {
         var album = this.model.get('album');
-        $.getJSON('/deleteArt/' + album.get('id') + '/' + this.model.get('file_name'), function(data) {
+        var imageUrl = '/art/' + album.get('id') + '/' + this.model.get('file_name');
+        var artview = $('#artview');
+        artview.find('img').attr('src', imageUrl);
+        artview.css('display', 'block');
+    },
+    artRemove: function() {
+        var album = this.model.get('album');
+        $.getJSON('/deleteArt/' + album.get('id') + '/' + this.model.get('file_name'), function() {
             album.fetch();
         });
     },
-    artChoose: function(ev) {
+    artChoose: function() {
+        var album = this.model.get('album');
+        $.getJSON('/chooseArt/' + album.get('id') + '/' + this.model.get('file_name'), function() {
+            album.fetch();
+        });
     }
 });
 
@@ -138,14 +142,12 @@ app.AppView = Backbone.View.extend({
         var query = $('#query').val();
         app.router.navigate('query/' + escape(query), {trigger: true});
     },
-    closeArtView: function(ev) {
+    closeArtView: function() {
         $('#artview').css('display', 'none');
     },
     initialize: function() {
-        this.shownAlbums = null;
     },
     showAlbums: function(albums) {
-        this.shownAlbums = albums;
         $('#content').empty();
         albums.each(function(album) {
             var view = new app.AlbumView({model: album});
