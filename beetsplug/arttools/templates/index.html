@@ -38,8 +38,7 @@
         <!-- Templates. -->
         <script type="text/template" id="album-template">
             <div class="album-title-right">
-                <%= collecting ? '' : '<i class="glyphicon glyphicon-download collect-art" title="Collect art for this album."></i>' %>
-                <i class="glyphicon glyphicon-refresh refresh-album" title="Reload the album."></i>
+                <button class="btn btn-default btn-sm collect-art" <%= collecting ? 'disabled' : '' %>><span class="glyphicon glyphicon-refresh <%= collecting ? 'glyphicon-refresh-animate' : '' %>"></span> Collect</button>
             </div>
             <h1><%= title %></h1>
             <div class="arts"></div>

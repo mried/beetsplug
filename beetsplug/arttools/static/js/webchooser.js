@@ -73,7 +73,6 @@ app.AlbumView = Backbone.View.extend({
     attributes: {"class": "album"},
     template: _.template($('#album-template').html()),
     events: {
-        'click .refresh-album': 'refreshAlbum',
         'click .collect-art': 'collectArt'
     },
     initialize: function() {
@@ -97,9 +96,6 @@ app.AlbumView = Backbone.View.extend({
     renderArt: function(art) {
         var artView = new app.ArtView({model: art});
         this.$('div.arts').append(artView.render().el);
-    },
-    refreshAlbum: function() {
-        this.model.fetch();
     },
     collectArt: function() {
         var model = this.model;
