@@ -56,6 +56,8 @@ app.Album = Backbone.Model.extend({
                             return d;
                           });
         this.arts = new app.Arts(arts_data);
+
+        return data;
     }
 });
 
@@ -71,7 +73,8 @@ app.AlbumView = Backbone.View.extend({
     attributes: {"class": "album"},
     template: _.template($('#album-template').html()),
     events: {
-        'click .refresh-album': 'refreshAlbum'
+        'click .refresh-album': 'refreshAlbum',
+        'click .collect-art': 'collectArt'
     },
     initialize: function() {
         this.listenTo(this.model, 'change', this.render);
@@ -83,6 +86,12 @@ app.AlbumView = Backbone.View.extend({
         this.$el.html(this.template(this.model.toJSON()));
         this.model.arts.forEach(this.renderArt);
         this.$el.children(".arts").append("<div style='clear: both'></div>");
+
+        if(this.model.get('collecting')) {
+            var view = this;
+            setTimeout(function() { view.model.fetch(); }, 1000);
+        }
+
         return this;
     },
     renderArt: function(art) {
@@ -91,6 +100,12 @@ app.AlbumView = Backbone.View.extend({
     },
     refreshAlbum: function() {
         this.model.fetch();
+    },
+    collectArt: function() {
+        var model = this.model;
+        $.getJSON('/collectArt/' + model.get('id'), function() {
+            model.fetch();
+        });
     }
 });
 

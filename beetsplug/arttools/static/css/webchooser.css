@@ -74,6 +74,10 @@ body {
     cursor: pointer;
 }
 
+.glyphicon-download {
+    cursor: pointer;
+}
+
 .glyphicon-link {
     color: #0000BB;
 }

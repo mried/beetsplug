@@ -38,6 +38,7 @@
         <!-- Templates. -->
         <script type="text/template" id="album-template">
             <div class="album-title-right">
+                <%= collecting ? '' : '<i class="glyphicon glyphicon-download collect-art" title="Collect art for this album."></i>' %>
                 <i class="glyphicon glyphicon-refresh refresh-album" title="Reload the album."></i>
             </div>
             <h1><%= title %></h1>

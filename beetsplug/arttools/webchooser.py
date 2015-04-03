@@ -13,10 +13,12 @@
 # included in all copies or substantial portions of the Software.
 import json
 import os
+import random
 
 from flask import Flask, g
 import flask
 import shutil
+import thread
 from werkzeug.exceptions import abort
 from beets import config
 from beets.util import bytestring_path, syspath
@@ -32,6 +34,7 @@ def web_choose(plugin, lib, log, debug):
     app.config['lib'] = lib
     app.config['plugin'] = plugin
     app.config['log'] = log
+    app.config['collect_tasks'] = []
     host = plugin.config['host'].get(unicode)
     port = plugin.config['port'].get(int)
     app.run(host=host, port=port, debug=debug, threaded=True)
@@ -42,6 +45,7 @@ def before_request():
     g.lib = app.config['lib']
     g.plugin = app.config['plugin']
     g.log = app.config['log']
+    g.collect_tasks = app.config['collect_tasks']
 
 
 @app.route("/")
@@ -133,6 +137,28 @@ def choose_art_file(album_id, file_name):
     return json.dumps({'result': 'ok'})
 
 
+@app.route("/collectArt/<album_id>")
+def collect_art(album_id):
+    album = g.lib.albums(u"id:" + album_id).get()
+    if not album:
+        abort(404)
+
+    if album_id in g.collect_tasks:
+        return json.dumps({})
+
+    collect_tasks = g.collect_tasks
+    plugin = g.plugin
+    collect_tasks.append(album.id)
+
+    def collect(album):
+        plugin.collect_art_for_albums([album], False, False)
+        collect_tasks.remove(album.id)
+
+    thread.start_new_thread(collect, (album,))
+
+    return json.dumps({'result': 'ok'})
+
+
 def get_album_dict(album):
     art_files = []
     bound_art = None
@@ -153,5 +179,8 @@ def get_album_dict(album):
                           'aspect_ratio': aspect_ratio,
                           'bound_art': file_name == bound_art,
                           'would_choose': file_name == chosen_art})
-    album_dict = {'id': album.id, 'title': str(album), 'art_files': art_files}
+    album_dict = {'id': album.id,
+                  'title': str(album),
+                  'art_files': art_files,
+                  'collecting': album.id in g.collect_tasks}
     return album_dict

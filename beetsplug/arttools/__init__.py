@@ -379,8 +379,7 @@ class ArtToolsPlugin(BeetsPlugin):
 
         result.save(out_file)
 
-    def collect_art(self, lib, opts, args):
-        albums = lib.albums(ui.decargs(args))
+    def collect_art_for_albums(self, albums, force, verbose):
         if self.config['collect_extract'].get():
             self._log.info(u"Extracting cover arts for matched albums...")
             extractor = EmbedCoverArtPlugin()
@@ -389,25 +388,24 @@ class ArtToolsPlugin(BeetsPlugin):
             skipped = 0
             for album in albums:
                 artpath = normpath(os.path.join(album.path, 'extracted'))
-                if self._art_file_exists(artpath) and not opts.force:
+                if self._art_file_exists(artpath) and not force:
                     skipped += 1
-                    if opts.verbose:
+                    if verbose:
                         self._log.info(u"  Skipping extraction for '{0}': "
                                        u"file already exists.", album)
                     continue
                 if extractor.extract_first(artpath, album.items()):
                     success += 1
-                    if opts.verbose:
+                    if verbose:
                         self._log.info(u"  Extracted art for '{0}'.",
                                        album)
-                elif opts.verbose:
+                elif verbose:
                     self._log.info(u"  Could not extract art for '{0}'.",
                                    album)
             self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} Total: "
                            u"{3}",
                            success, skipped, len(albums) - success - skipped,
                            len(albums))
-
         if len(self.config['collect_fetch_sources'].get()) > 0:
             config['fetchart'].get()['remote_priority'] = True
             for source in self.config['collect_fetch_sources'].as_str_seq():
@@ -420,10 +418,10 @@ class ArtToolsPlugin(BeetsPlugin):
                 fetcher = FetchArtPlugin()
                 for album in albums:
                     if self._art_file_exists(os.path.join(album.path,
-                                                          artname))\
-                            and not opts.force:
+                                                          artname)) \
+                            and not force:
                         skipped += 1
-                        if opts.verbose:
+                        if verbose:
                             self._log.info(u"  Skipping fetch for '{0}': file "
                                            u"already exists.", album)
                         continue
@@ -435,16 +433,20 @@ class ArtToolsPlugin(BeetsPlugin):
                         artpath = os.path.join(album.path, artname + extension)
                         shutil.move(filename, util.syspath(normpath(artpath)))
                         success += 1
-                        if opts.verbose:
+                        if verbose:
                             self._log.info(u"  Fetched art for '{0}'.",
                                            album)
-                    elif opts.verbose:
+                    elif verbose:
                         self._log.info(u"  Could not fetch art for '{0}'.",
                                        album)
                 self._log.info(u"  Success: {0} Skipped: {1} Failed: {2} "
                                u"Total: {3}",
                                success, skipped,
                                len(albums) - success - skipped, len(albums))
+
+    def collect_art(self, lib, opts, args):
+        albums = lib.albums(ui.decargs(args))
+        self.collect_art_for_albums(albums, opts.force, opts.verbose)
 
     def web_choose(self, lib, opts, args):
         import webchooser
