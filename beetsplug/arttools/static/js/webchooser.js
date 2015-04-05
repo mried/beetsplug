@@ -70,7 +70,13 @@ app.Albums = Backbone.Collection.extend({
 
 app.AlbumView = Backbone.View.extend({
     tagName: "div",
-    attributes: {"class": "album"},
+    attributes: function() {
+        var classes = "album";
+        if(this.model.arts.length == 1) {
+            classes += " oneArt";
+        }
+        return {"class": classes}
+    },
     template: _.template($('#album-template').html()),
     events: {
         'click .collect-art': 'collectArt'
@@ -146,7 +152,10 @@ app.AppView = Backbone.View.extend({
     el: $('body'),
     events: {
         'submit #queryForm': 'querySubmit',
-        'click #artview': 'closeArtView'
+        'click #artview': 'closeArtView',
+        'click #checkHideOneArt': 'toggleHideOneArt',
+        'click #checkHideBadArt': 'toggleHideBadArt',
+        'click #checkHideGoodArt': 'toggleHideGoodArt'
     },
     querySubmit: function(ev) {
         ev.preventDefault();
@@ -157,6 +166,15 @@ app.AppView = Backbone.View.extend({
         $('#artview').css('display', 'none');
     },
     initialize: function() {
+    },
+    toggleHideOneArt: function () {
+        $('.oneArt').toggle();
+    },
+    toggleHideBadArt: function () {
+        $('.badArt').toggle();
+    },
+    toggleHideGoodArt: function () {
+        $('.goodArt').toggle();
     },
     showAlbums: function(albums) {
         $('#content').empty();

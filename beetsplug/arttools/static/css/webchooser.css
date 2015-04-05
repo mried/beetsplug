@@ -125,6 +125,11 @@ body {
     margin-top: 5%;
 }
 
+#options-drop-down label {
+    text-indent: -1.2em;
+    margin-left: 1.6em;
+}
+
 .glyphicon-refresh-animate {
     -animation: spin 2s infinite linear;
     -webkit-animation: spin2 2s infinite linear;
