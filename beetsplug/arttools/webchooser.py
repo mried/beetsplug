@@ -13,7 +13,6 @@
 # included in all copies or substantial portions of the Software.
 import json
 import os
-import random
 
 from flask import Flask, g
 import flask
@@ -108,6 +107,20 @@ def delete_art_file(album_id, file_name):
     return json.dumps({'result': 'ok'})
 
 
+def set_art(album, art_path):
+    # Set new cover art
+    art_filename = bytestring_path(config["art_filename"].get())
+    new_image = syspath(os.path.join(album.item_dir(), art_filename +
+                                     os.path.splitext(art_path)[1]))
+    art_path = syspath(art_path)
+    if art_path != new_image:
+        shutil.copy(art_path, new_image)
+    album.set_art(new_image, copy=False)
+    album.store()
+    # Delete other files
+    g.plugin.delete_unused_art_of_album(album)
+
+
 @app.route("/chooseArt/<album_id>/<file_name>")
 def choose_art_file(album_id, file_name):
     file_name = bytestring_path(file_name)
@@ -118,23 +131,33 @@ def choose_art_file(album_id, file_name):
     if not album:
         abort(404)
 
-    art_path = syspath(os.path.join(album.path, file_name))
-    if os.path.isfile(art_path):
-        # Set new cover art
-        art_filename = bytestring_path(config["art_filename"].get())
-        new_image = syspath(os.path.join(album.item_dir(), art_filename +
-                                         os.path.splitext(file_name)[1]))
-        if art_path != new_image:
-            shutil.copy(art_path, new_image)
-        album.set_art(new_image, copy=False)
-        album.store()
-
-        # Delete other files
-        g.plugin.delete_unused_art_of_album(album)
+    art_path = os.path.join(album.path, file_name)
+    if os.path.isfile(syspath(art_path)):
+        set_art(album, art_path)
     else:
         abort(404)
 
     return json.dumps({'result': 'ok'})
+
+
+@app.route("/acceptArtQuery/")
+def accept_art_no_query():
+    return accept_art_query(None)
+
+
+@app.route("/acceptArtQuery/<query:queries>")
+def accept_art_query(queries):
+    albums = g.lib.albums(queries)
+
+    for album in albums:
+        accept_art_for_album(album)
+
+    return json.dumps({'result': 'ok'})
+
+
+def accept_art_for_album(album):
+    chosen_art = bytestring_path(g.plugin.get_chosen_art(album))
+    set_art(album, chosen_art)
 
 
 @app.route("/collectArt/<album_id>")
@@ -143,18 +166,42 @@ def collect_art(album_id):
     if not album:
         abort(404)
 
-    if album_id in g.collect_tasks:
-        return json.dumps({})
+    collect_art_for_albums([album])
+
+    return json.dumps({'result': 'ok'})
+
+
+def collect_art_for_albums(albums):
+    albums_to_collect = []
+    for album in albums:
+        if album.id not in g.collect_tasks:
+            albums_to_collect.append(album)
+
+    if len(albums_to_collect) == 0:
+        return
 
     collect_tasks = g.collect_tasks
     plugin = g.plugin
-    collect_tasks.append(album.id)
+    collect_tasks.extend(map(lambda a: a.id, albums_to_collect))
 
-    def collect(album):
-        plugin.collect_art_for_albums([album], False, False)
-        collect_tasks.remove(album.id)
+    def collect(albums):
+        plugin.collect_art_for_albums(albums, False, False)
+        for album in albums:
+            collect_tasks.remove(album.id)
 
-    thread.start_new_thread(collect, (album,))
+    thread.start_new_thread(collect, (albums_to_collect,))
+
+
+@app.route("/collectArtQuery/")
+def collect_art_no_query():
+    return collect_art_query(None)
+
+
+@app.route("/collectArtQuery/<query:queries>")
+def collect_art_query(queries):
+    albums = g.lib.albums(queries)
+
+    collect_art_for_albums(albums)
 
     return json.dumps({'result': 'ok'})
 

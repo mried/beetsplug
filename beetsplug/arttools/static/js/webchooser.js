@@ -93,8 +93,8 @@ app.AlbumView = Backbone.View.extend({
         this.$el.children(".arts").append("<div style='clear: both'></div>");
 
         if(this.model.get('collecting')) {
-            var view = this;
-            setTimeout(function() { view.model.fetch(); }, 1000);
+            var model = this.model;
+            setTimeout(function() { model.fetch(); }, 1000);
         }
 
         return this;
@@ -155,12 +155,14 @@ app.AppView = Backbone.View.extend({
         'click #artview': 'closeArtView',
         'click #checkHideOneArt': 'toggleHideOneArt',
         'click #checkHideBadArt': 'toggleHideBadArt',
-        'click #checkHideGoodArt': 'toggleHideGoodArt'
+        'click #checkHideGoodArt': 'toggleHideGoodArt',
+        'click #accept-all': 'acceptAll',
+        'click #collect-all': 'collectAll'
     },
     querySubmit: function(ev) {
         ev.preventDefault();
-        var query = $('#query').val();
-        app.router.navigate('query/' + escape(query), {trigger: true});
+        var query = this.getQuery();
+        app.router.navigate('query/' + encodeURI(query), {trigger: true});
     },
     closeArtView: function() {
         $('#artview').css('display', 'none');
@@ -175,6 +177,28 @@ app.AppView = Backbone.View.extend({
     },
     toggleHideGoodArt: function () {
         $('.goodArt').toggle();
+    },
+    getQuery: function () {
+        return $('#query').val();
+    },
+    getQueryUrl: function () {
+        var query = $('#query').val();
+        if(!query) {
+            query = "";
+        }
+        return query.split(/\s+/).map(encodeURIComponent).join('/');
+    },
+    acceptAll: function () {
+        var query = $('#query').val();
+        $.getJSON('/acceptArtQuery/' + this.getQueryUrl(), function() {
+            app.router.navigate('query/' + encodeURI(query), {trigger: true});
+        });
+    },
+    collectAll: function () {
+        var query = $('#query').val();
+        $.getJSON('/collectArtQuery/' + this.getQueryUrl(), function() {
+            app.router.navigate('query/' + encodeURI(query), {trigger: true});
+        });
     },
     showAlbums: function(albums) {
         $('#content').empty();
