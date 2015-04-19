@@ -13,6 +13,18 @@ body {
     border-radius: 10px 10px 0 0
 }
 
+.hideBadArt div .arts .badArt {
+    display: none;
+}
+
+.hideGoodArt div .arts .goodArt {
+    display: none;
+}
+
+.hideOneArt .oneArt {
+    display: none;
+}
+
 .album {
     clear: both;
 }

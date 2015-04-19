@@ -170,13 +170,13 @@ app.AppView = Backbone.View.extend({
     initialize: function() {
     },
     toggleHideOneArt: function () {
-        $('.oneArt').toggle();
+        $('#content').toggleClass('hideOneArt');
     },
     toggleHideBadArt: function () {
-        $('.badArt').toggle();
+        $('#content').toggleClass('hideBadArt');
     },
     toggleHideGoodArt: function () {
-        $('.goodArt').toggle();
+        $('#content').toggleClass('hideGoodArt');
     },
     getQuery: function () {
         return $('#query').val();

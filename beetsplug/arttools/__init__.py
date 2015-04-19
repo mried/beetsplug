@@ -50,7 +50,6 @@ class ArtToolsPlugin(BeetsPlugin):
             'port': 8338
         })
 
-
     def commands(self):
         list_bound_art_command = Subcommand('listboundart',
                                             help='lists all cover arts of '
@@ -349,7 +348,7 @@ class ArtToolsPlugin(BeetsPlugin):
         out_file = os.path.abspath(opts.outFile)
 
         if not opts.outFile:
-            self._log.info(u"Usage: artcollage -f <output file> [-s <size>] "
+            self._log.info(u"Usage: artcollage -o <output file> [-s <size>] "
                            u"[query]")
             return
 
