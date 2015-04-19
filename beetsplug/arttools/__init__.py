@@ -345,6 +345,12 @@ class ArtToolsPlugin(BeetsPlugin):
         albums = lib.albums(ui.decargs(args))
         images = self._get_bound_art_files(albums)
         tile_size = opts.tilesize or self.config['collage_tilesize'].get()
+        try:
+            tile_size = int(tile_size)
+        except ValueError:
+            self._log.error(u"Unable to convert {0} into a number used for "
+                            u"tile size. Aboard.".format(tile_size))
+            return
         out_file = os.path.abspath(opts.outFile)
 
         if not opts.outFile:
@@ -359,7 +365,7 @@ class ArtToolsPlugin(BeetsPlugin):
             self._log.error(u"Destination does not exist.")
             return
 
-        cols = int(math.floor(math.sqrt(len(images))))
+        cols = int(math.ceil(math.sqrt(len(images))))
         rows = int(math.ceil(len(images) / float(cols)))
 
         result = Image.new("RGB",
