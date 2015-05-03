@@ -15,7 +15,7 @@ import os
 import re
 from beets import util
 from beets.importer import ImportTask, SingletonImportTask, action, \
-    SentinelImportTask, ArchiveImportTask
+    SentinelImportTask, ArchiveImportTask, ImportTaskFactory
 from beets.plugins import BeetsPlugin
 from beets.util import pipeline
 
@@ -38,14 +38,17 @@ class AutoSingletonPlugin(BeetsPlugin):
             return task
 
         if self.is_singleton(task):
-            return self.get_singletons(task)
+            return self.get_singletons(task, session)
         return [task]
 
     @staticmethod
-    def get_singletons(task):
+    def get_singletons(task, session):
+        factory = ImportTaskFactory(task.toppath, session)
         new_tasks = []
         for item in task.items:
-            new_tasks.append(SingletonImportTask(task.toppath, item))
+            new_task = factory.singleton(item.path)
+            if new_task:
+                new_tasks.append(new_task)
 
         return new_tasks
 

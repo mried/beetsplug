@@ -358,6 +358,10 @@ class ArtToolsPlugin(BeetsPlugin):
                            u"[query]")
             return
 
+        if len(images) < 1:
+            self._log.warn(u"No cover images selected. Aboard.")
+            return
+
         if os.path.isdir(out_file):
             out_file = os.path.join(out_file, "covers.jpg")
 
