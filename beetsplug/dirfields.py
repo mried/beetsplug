@@ -23,7 +23,6 @@ class DirFieldsPlugin(BeetsPlugin):
         super(DirFieldsPlugin, self).__init__()
         self.import_stages = [self.stage]
 
-
     def stage(self, config, task):
         highest_level = sys.maxint
         levels = []

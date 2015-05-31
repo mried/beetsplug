@@ -13,11 +13,11 @@
 # included in all copies or substantial portions of the Software.
 import os
 import re
+
 from beets import util
-from beets.importer import ImportTask, SingletonImportTask, action, \
+from beets.importer import ImportTask, SingletonImportTask,\
     SentinelImportTask, ArchiveImportTask, ImportTaskFactory
 from beets.plugins import BeetsPlugin
-from beets.util import pipeline
 
 
 class AutoSingletonPlugin(BeetsPlugin):
