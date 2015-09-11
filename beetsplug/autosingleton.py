@@ -24,14 +24,19 @@ class AutoSingletonPlugin(BeetsPlugin):
     def __init__(self):
         super(AutoSingletonPlugin, self).__init__()
 
+        self.chained = False
+
         self.register_listener('import_task_created',
                                self.import_task_created_event)
 
-    def import_task_created_event(self, session, task):
+    def import_task_created_event(self, session, task, chained=False):
         """
 
         :type task: ImportTask
         """
+        if self.chained and not chained:
+            return None
+
         if isinstance(task, SingletonImportTask) \
                 or isinstance(task, SentinelImportTask)\
                 or isinstance(task, ArchiveImportTask):
