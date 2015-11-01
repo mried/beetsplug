@@ -40,7 +40,7 @@ class AutoSingletonPlugin(BeetsPlugin):
         if isinstance(task, SingletonImportTask) \
                 or isinstance(task, SentinelImportTask)\
                 or isinstance(task, ArchiveImportTask):
-            return task
+            return [task]
 
         if self.is_singleton(task):
             return self.get_singletons(task, session)
