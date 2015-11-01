@@ -8,6 +8,8 @@ Currently the following plugins are available:
 * [arttools](https://github.com/mried/beetsplug/wiki/arttools): A toolbox for album art handling.
 * [autosingleton](https://github.com/mried/beetsplug/wiki/autosingleton): Automatically decide if files should be imported as singletons.
 * [dirfields](https://github.com/mried/beetsplug/wiki/dirfields): Adds a field for each directory of its original path.
+* [multipletaskcreated](https://github.com/mried/beetsplug/wiki/multipletaskcreated): Call the `import_task_created` event of multiple plugins in a chained way.
+* [notagain](https://github.com/mried/beetsplug/wiki/notagain): Skip files which are already imported before beets handles them.
 * [regexfilefilter](https://github.com/mried/beetsplug/wiki/regexfilefilter): Filter the files to import using regular expressions.
  
 See the [Wiki](https://github.com/mried/beetsplug/wiki) for more details and how to configure them.
