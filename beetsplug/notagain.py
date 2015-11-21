@@ -15,6 +15,7 @@ from beets import config
 from beets.importer import SingletonImportTask, SentinelImportTask, ArchiveImportTask
 from beets.library import PathQuery
 from beets.plugins import BeetsPlugin
+from beets.util import bytestring_path, displayable_path
 
 
 class NotAgain(BeetsPlugin):
@@ -39,7 +40,7 @@ class NotAgain(BeetsPlugin):
                 or isinstance(task, ArchiveImportTask):
             return [task]
 
-        library_base_path = config['directory'].get()
+        library_base_path = bytestring_path(config['directory'].get())
         items_to_remove = []
         if isinstance(task, SingletonImportTask):
             for item in task.items:
@@ -53,7 +54,7 @@ class NotAgain(BeetsPlugin):
                 if item.path in task.paths:
                     task.paths.remove(item.path)
                 self._log.info(
-                    'Skipping item {0}: already present at the library.'.format(item.path))
+                    u'Skipping item {0}: already present at the library.'.format(item.path))
 
             return [task] if len(task.items) > 0 else []
 
@@ -65,5 +66,6 @@ class NotAgain(BeetsPlugin):
                     not session.lib.items(PathQuery('path', item.path)):
                 return [task]
 
-        self._log.info('Skipping album {0}: already present at the library.'.format(task.paths[0]))
+        self._log.info(u'Skipping album {0}: already present at the library.'.format(
+            displayable_path(task.paths[0])))
         return []
