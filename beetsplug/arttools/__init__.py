@@ -22,11 +22,10 @@ from beets.plugins import BeetsPlugin
 import beetsplug
 from beets.ui import Subcommand
 from beets import config
-from beets import logging
 from beets import ui
+from beets import art
 from beets import util
 from beets.util import normpath, bytestring_path
-from beetsplug.embedart import EmbedCoverArtPlugin
 from beetsplug.fetchart import FetchArtPlugin
 
 
@@ -222,8 +221,9 @@ class ArtToolsPlugin(BeetsPlugin):
         art_filename = bytestring_path(config["art_filename"].get())
         albums = lib.albums(ui.decargs(args))
         for album in albums:
-            chosen_image = bytestring_path(self.get_chosen_art(album))
+            chosen_image = self.get_chosen_art(album)
             if not opts.pretend and chosen_image:
+                chosen_image = bytestring_path(chosen_image)
                 new_image = os.path.join(album.item_dir(), art_filename +
                                          os.path.splitext(chosen_image)[1])
                 if chosen_image != new_image:
@@ -344,18 +344,19 @@ class ArtToolsPlugin(BeetsPlugin):
     def art_collage(self, lib, opts, args):
         albums = lib.albums(ui.decargs(args))
         images = self._get_bound_art_files(albums)
+
+        if not opts.outFile:
+            self._log.info(u"Usage: artcollage -o <output file> [-s <size>] "
+                           u"[query]")
+            return
+        out_file = os.path.abspath(opts.outFile)
+
         tile_size = opts.tilesize or self.config['collage_tilesize'].get()
         try:
             tile_size = int(tile_size)
         except ValueError:
             self._log.error(u"Unable to convert {0} into a number used for "
                             u"tile size. Aboard.".format(tile_size))
-            return
-        out_file = os.path.abspath(opts.outFile)
-
-        if not opts.outFile:
-            self._log.info(u"Usage: artcollage -o <output file> [-s <size>] "
-                           u"[query]")
             return
 
         if len(images) < 1:
@@ -391,8 +392,6 @@ class ArtToolsPlugin(BeetsPlugin):
     def collect_art_for_albums(self, albums, force, verbose):
         if self.config['collect_extract'].get():
             self._log.info(u"Extracting cover arts for matched albums...")
-            extractor = EmbedCoverArtPlugin()
-            extractor._log.setLevel(logging.ERROR)
             success = 0
             skipped = 0
             for album in albums:
@@ -403,7 +402,7 @@ class ArtToolsPlugin(BeetsPlugin):
                         self._log.info(u"  Skipping extraction for '{0}': "
                                        u"file already exists.", album)
                     continue
-                if extractor.extract_first(artpath, album.items()):
+                if art.extract_first(self._log, artpath, album.items()):
                     success += 1
                     if verbose:
                         self._log.info(u"  Extracted art for '{0}'.",

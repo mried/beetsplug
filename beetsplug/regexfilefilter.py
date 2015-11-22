@@ -18,7 +18,6 @@ import re
 from beets import config
 from beets.importer import action, SingletonImportTask
 from beets.plugins import BeetsPlugin
-from beets.util import syspath
 
 log = logging.getLogger('beets')
 

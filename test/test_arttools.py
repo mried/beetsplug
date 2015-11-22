@@ -43,7 +43,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         self.unload_plugins()
         self.teardown_beets()
 
-    def __create_album(self, artist='Artist', album='Album', art_width=None,
+    def __create_album(self, artist=u'Artist', album=u'Album', art_width=None,
                        art_height=None, src_file='full.mp3'):
         album = self.add_album(albumartist=artist, artist=artist, album=album)
         src = os.path.join(_common.RSRC, src_file)
@@ -71,7 +71,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         self.assertEqual(im.size, (width, height))
 
     def test_list_no_art(self):
-        self.__create_album('No Art', 'Nil')
+        self.__create_album(u'No Art', u'Nil')
 
         with capture_log('beets.arttools') as logs:
             self.run_command('listboundart')
@@ -79,9 +79,9 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
 
     def test_list_bound_art(self):
         albums = []
-        self.__create_album('No Art', 'Nil')
-        albums.append(self.__create_album('Good Art', 'Small', 200, 200))
-        albums.append(self.__create_album('Good Art', 'Medium', 300, 300))
+        self.__create_album(u'No Art', u'Nil')
+        albums.append(self.__create_album(u'Good Art', u'Small', 200, 200))
+        albums.append(self.__create_album(u'Good Art', u'Medium', 300, 300))
 
         with capture_log('beets.arttools') as logs:
             self.run_command('listboundart')
@@ -100,19 +100,19 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
 
     def test_list_bad_bound_art(self):
         albums = []
-        self.__create_album('No Art', 'Nil')
-        self.__create_album('Good Art', 'Small', 200, 200)
-        self.__create_album('Good Art', 'Medium', 300, 300)
-        self.__create_album('Good Art', 'Non Square', 250, 240)
-        albums.append(self.__create_album('Bad Art', 'Tiny', 100, 100))
+        self.__create_album(u'No Art', u'Nil')
+        self.__create_album(u'Good Art', u'Small', 200, 200)
+        self.__create_album(u'Good Art', u'Medium', 300, 300)
+        self.__create_album(u'Good Art', u'Non Square', 250, 240)
+        albums.append(self.__create_album(u'Bad Art', u'Tiny', 100, 100))
         albums.append(
-            self.__create_album('Bad Art', 'Small Aspect V', 100, 150))
+            self.__create_album(u'Bad Art', u'Small Aspect V', 100, 150))
         albums.append(
-            self.__create_album('Bad Art', 'Small Aspect H', 150, 100))
+            self.__create_album(u'Bad Art', u'Small Aspect H', 150, 100))
         albums.append(
-            self.__create_album('Bad Art', 'Medium Aspect V', 200, 300))
+            self.__create_album(u'Bad Art', u'Medium Aspect V', 200, 300))
         albums.append(
-            self.__create_album('Bad Art', 'Medium Aspect H', 300, 200))
+            self.__create_album(u'Bad Art', u'Medium Aspect H', 300, 200))
 
         with capture_log('beets.arttools') as logs:
             self.run_command('listbadboundart')
@@ -158,7 +158,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         paths += [self.__copy_art_to_album(200, 200, album, 'cover.png')]
         paths += [self.__copy_art_to_album(300, 300, album, 'extracted.png')]
         self.__copy_art_to_album(250, 240, album, 'dummy.png')
-        album2 = self.__create_album('ArtistB', 'AlbumB')
+        album2 = self.__create_album(u'ArtistB', u'AlbumB')
         paths += [self.__copy_art_to_album(200, 200, album2, 'cover.png')]
         paths += [self.__copy_art_to_album(300, 300, album2, 'extracted.png')]
         self.__copy_art_to_album(250, 240, album2, 'dummy.png')
@@ -192,7 +192,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         paths += [self.__copy_art_to_album(250, 240, album, 'extracted.png') +
                   ' (250 x 240) AR:0.96']
         self.__copy_art_to_album(300, 300, album, 'dummy.png')
-        album2 = self.__create_album('ArtistB', 'AlbumB')
+        album2 = self.__create_album(u'ArtistB', u'AlbumB')
         paths += [self.__copy_art_to_album(200, 200, album2, 'cover.png') +
                   ' (200 x 200) AR:1.0']
         paths += [self.__copy_art_to_album(250, 240, album2, 'extracted.png') +
@@ -217,10 +217,10 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
 
     def test_copy_bound_art(self):
         albums = []
-        self.__create_album('No Art', 'Nil')
-        albums.append(self.__create_album('Good Art', 'Small', 200, 200))
-        albums.append(self.__create_album('Good Art', 'Medium', 300, 300))
-        albums.append(self.__create_album('Good Art', 'Compilation', 300, 300))
+        self.__create_album(u'No Art', u'Nil')
+        albums.append(self.__create_album(u'Good Art', u'Small', 200, 200))
+        albums.append(self.__create_album(u'Good Art', u'Medium', 300, 300))
+        albums.append(self.__create_album(u'Good Art', u'Compilation', 300, 300))
         albums[2].albumtype = 'compilation'
         albums[2].store()
 
@@ -267,12 +267,12 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         config['art_filename'] = 'cover'
 
         paths = []
-        self.__create_album('No Art', 'Nil')
+        self.__create_album(u'No Art', u'Nil')
         album = self.__create_album(art_width=200, art_height=200)
         paths += [album.artpath]
         paths += [self.__copy_art_to_album(300, 300, album, 'extracted.png')]
         self.__copy_art_to_album(250, 240, album, 'dummy.png')
-        album2 = self.__create_album('ArtistB', 'AlbumB', art_width=200,
+        album2 = self.__create_album(u'ArtistB', u'AlbumB', art_width=200,
                                      art_height=200)
         paths += [album2.artpath]
         paths += [self.__copy_art_to_album(300, 300, album2, 'extracted.png')]
@@ -299,9 +299,9 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
 
     def test_art_collage(self):
         albums = []
-        self.__create_album('No Art', 'Nil')
-        albums.append(self.__create_album('Good Art', 'Small', 200, 200))
-        albums.append(self.__create_album('Good Art', 'Medium', 300, 300))
+        self.__create_album(u'No Art', u'Nil')
+        albums.append(self.__create_album(u'Good Art', u'Small', 200, 200))
+        albums.append(self.__create_album(u'Good Art', u'Medium', 300, 300))
 
         with capture_log('beets.arttools') as logs:
             self.run_command('artcollage')
@@ -315,7 +315,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         path = os.path.join(self.temp_dir, 'covers.jpg')
         self.run_command('artcollage', '-o', self.temp_dir)
         self.assertExists(path)
-        self.assertSize(path, 200, 400)
+        self.assertSize(path, 400, 200)
 
         self.run_command('artcollage', '-o', path, 'Small')
         self.assertExists(path)
@@ -323,26 +323,26 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
 
         self.run_command('artcollage', '-o', path, '-s', 50)
         self.assertExists(path)
-        self.assertSize(path, 50, 100)
+        self.assertSize(path, 100, 50)
 
     def test_choose_art(self):
         config['arttools']['names'] = ['cover', 'extracted']
 
         albums = []
         # Don't do anything
-        albums += [self.__create_album('Artist', 'Album Without Art')]
+        albums += [self.__create_album(u'Artist', u'Album Without Art')]
         # Choose best art
-        albums += [self.__create_album('Artist', 'Album Without Bound Art')]
+        albums += [self.__create_album(u'Artist', u'Album Without Bound Art')]
         self.__copy_art_to_album(200, 200, albums[1], 'cover.png')
         self.__copy_art_to_album(300, 300, albums[1], 'extracted.png')
         self.__copy_art_to_album(250, 240, albums[1], 'dummy.png')
         # Replace with better art
-        albums += [self.__create_album('Artist', 'Album With Bound Art', 200,
+        albums += [self.__create_album(u'Artist', u'Album With Bound Art', 200,
                                        200)]
         self.__copy_art_to_album(300, 300, albums[2], 'extracted.png')
         self.__copy_art_to_album(250, 240, albums[2], 'dummy.png')
         # Choose best bad art
-        albums += [self.__create_album('Artist', 'Album With Unbound Bad Art')]
+        albums += [self.__create_album(u'Artist', u'Album With Unbound Bad Art')]
         self.__copy_art_to_album(100, 100, albums[3], 'cover.png')
         self.__copy_art_to_album(200, 300, albums[3], 'extracted.png')
         self.__copy_art_to_album(300, 200, albums[3], 'dummy.png')
@@ -388,7 +388,7 @@ class ArtToolsPluginTest(_common.TestCase, TestHelper):
         config['arttools']['collect_extract'] = False
         config['arttools']['collect_fetch_sources'] = []
 
-        album = self.__create_album('Artist', 'Album With Art', 200, 200,
+        album = self.__create_album(u'Artist', u'Album With Art', 200, 200,
                                     src_file='image.mp3')
 
         self.run_command('collectart')
