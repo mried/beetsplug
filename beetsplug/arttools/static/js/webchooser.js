@@ -79,7 +79,54 @@ app.AlbumView = Backbone.View.extend({
     },
     template: _.template($('#album-template').html()),
     events: {
-        'click .collect-art': 'collectArt'
+        'click .collect-art': 'collectArt',
+        'dragleave': 'onDragLeave',
+        'drop': 'onDragDrop',
+        'dragover': 'onDragOver'
+    },
+    onDragLeave: function (e) {
+        this.$('div.art-drag-hover').hide();
+    },
+    onDragDrop: function (e) {
+        e.preventDefault();
+
+        this.$('div.art-drag-hover').hide();
+
+        var formData = new FormData();
+        for (var i = 0; i < e.originalEvent.dataTransfer.files.length; i++) {
+            if (e.originalEvent.dataTransfer.items[i].type.slice(0, 5) == "image") {
+                formData.append('file', e.originalEvent.dataTransfer.files[i]);
+            }
+        }
+
+        if (formData.length == 0) {
+            return;
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/uploadArt');
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                console.log('all done: ' + xhr.status);
+            } else {
+                console.log('Something went terribly wrong...');
+            }
+        };
+
+        xhr.send(formData);
+    },
+    onDragOver: function (e) {
+        e.preventDefault();
+        for (var i = 0; i < e.originalEvent.dataTransfer.types.length; ++i) {
+            if (e.originalEvent.dataTransfer.items[i].type.slice(0, 5) == "image") {
+                this.$('div.art-drag-hover').show();
+                e.originalEvent.dataTransfer.dropEffect = "copy";
+                return false;
+            }
+        }
+        e.originalEvent.dataTransfer.dropEffect = "none";
+
+        return true;
     },
     initialize: function() {
         this.listenTo(this.model, 'change', this.render);

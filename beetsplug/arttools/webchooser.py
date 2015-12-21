@@ -206,6 +206,11 @@ def collect_art_query(queries):
     return json.dumps({'result': 'ok'})
 
 
+@app.route("/uploadArt/", methods=['post'])
+def upload_art():
+    return ""
+
+
 def get_album_dict(album):
     art_files = []
     bound_art = None
