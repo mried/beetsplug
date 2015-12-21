@@ -514,6 +514,7 @@ class ArtToolsPlugin(BeetsPlugin):
         names = self.config['additional_names'].as_str_seq()
         names.append(config['art_filename'].get())
         names.append('extracted')
+        names.append('uploaded')
         for source in self.config['collect_fetch_sources'].as_str_seq():
             names.append('fetched{0}'.format(source.title()))
 

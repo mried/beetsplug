@@ -14,7 +14,7 @@
 import json
 import os
 
-from flask import Flask, g
+from flask import Flask, g, request
 import flask
 import shutil
 import thread
@@ -206,9 +206,22 @@ def collect_art_query(queries):
     return json.dumps({'result': 'ok'})
 
 
-@app.route("/uploadArt/", methods=['post'])
-def upload_art():
-    return ""
+@app.route("/uploadArt/<album_id>", methods=['post'])
+def upload_art(album_id):
+    album = g.lib.albums(u"id:" + album_id).get()
+    if not album:
+        abort(404)
+
+    if len(request.files) != 1:
+        abort(404)
+
+    uploaded_file = request.files['file']
+    ext = os.path.splitext(uploaded_file.filename)[1]
+    file_name = b"uploaded{0}".format(ext)
+    file_path = os.path.join(album.path, file_name)
+    uploaded_file.save(file_path)
+
+    return "Saved"
 
 
 def get_album_dict(album):

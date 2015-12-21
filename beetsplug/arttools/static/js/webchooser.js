@@ -103,11 +103,13 @@ app.AlbumView = Backbone.View.extend({
             return;
         }
 
+        var model = this.model;
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/uploadArt');
+        xhr.open('POST', '/uploadArt/' + this.model.get('id'));
         xhr.onload = function () {
             if (xhr.status === 200) {
                 console.log('all done: ' + xhr.status);
+                model.fetch();
             } else {
                 console.log('Something went terribly wrong...');
             }
