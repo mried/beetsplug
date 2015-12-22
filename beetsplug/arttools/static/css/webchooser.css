@@ -27,12 +27,14 @@ body {
 
 .album {
     clear: both;
+    position: relative;
 }
 
 .arts {
     width: 100%;
     background: #DDDDDD;
-    border-radius: 0 0 10px 10px}
+    border-radius: 0 0 10px 10px;
+}
 
 .artcontainer {
     width: 200px;
@@ -80,6 +82,24 @@ body {
     float: right;
     margin-top: 5px;
     margin-right: 5px;
+}
+
+.art-drag-hover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+.art-drag-hover div {
+    font-size: 25pt;
+    color: gray;
 }
 
 .glyphicon-refresh {

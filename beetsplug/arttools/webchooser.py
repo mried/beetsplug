@@ -14,10 +14,11 @@
 import json
 import os
 
-from flask import Flask, g
+from flask import Flask, g, request
 import flask
 import shutil
 import thread
+import requests
 from werkzeug.exceptions import abort
 from beets import config
 from beets.util import bytestring_path, syspath
@@ -202,6 +203,48 @@ def collect_art_query(queries):
     albums = g.lib.albums(queries)
 
     collect_art_for_albums(albums)
+
+    return json.dumps({'result': 'ok'})
+
+
+@app.route("/uploadArt/<album_id>", methods=['post'])
+def upload_art(album_id):
+    album = g.lib.albums(u"id:" + album_id).get()
+    if not album:
+        abort(404)
+
+    if len(request.files) != 1:
+        abort(404)
+
+    uploaded_file = request.files['file']
+    ext = os.path.splitext(uploaded_file.filename)[1]
+    file_name = b"uploaded{0}".format(ext)
+    file_path = os.path.join(album.path, file_name)
+    uploaded_file.save(file_path)
+
+    return "Saved"
+
+
+@app.route("/loadArt/<album_id>/<path:art_url>")
+def load_art(album_id, art_url):
+    album = g.lib.albums(u"id:" + album_id).get()
+    if not album:
+        abort(404)
+
+    if art_url is None or art_url == '':
+        abort(404)
+
+    r = requests.get(art_url, stream=True)
+    if r.status_code == requests.codes.ok:
+        ext = os.path.splitext(art_url)[1]
+        if ext == '':
+            return json.dumps({'result': 'failed',
+                               'reason': 'Unable to determine image format.'})
+        file_name = b"uploaded{0}".format(ext)
+        file_path = os.path.join(album.path, file_name)
+        with open(file_path, 'wb') as f:
+            for chunk in r.iter_content(1024):
+                f.write(chunk)
 
     return json.dumps({'result': 'ok'})
 
