@@ -31,7 +31,8 @@ class MultipleTaskCreated(BeetsPlugin):
                 plugin.chained = True
 
         for plugin in self.config['plugins'].get():
-            self.plugins.append(plugin_map[plugin])
+            if plugin in plugin_map:
+                self.plugins.append(plugin_map[plugin])
 
     def import_task_created_event(self, session, task):
         """
