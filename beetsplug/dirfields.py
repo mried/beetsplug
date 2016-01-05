@@ -49,7 +49,7 @@ class DirFieldsPlugin(BeetsPlugin):
         if len(levels) == 0:
             highest_level = 0
 
-        items = [task.item] if isinstance(task, SingletonImportTask) else task.items
+        items = [task.item] if isinstance(task, SingletonImportTask) else task.items + [task.album]
 
         for item in items:
             path = os.path.normpath(item.path)
@@ -61,10 +61,10 @@ class DirFieldsPlugin(BeetsPlugin):
                     path = ''
                 dirs.append(file_system_object)
             dirs.reverse()
-            for idx, dir in enumerate(dirs):
+            for idx, dir_name in enumerate(dirs):
                 if idx >= highest_level or idx in levels:
                     key = 'dir%i' % idx
                     if key in self.config:
                         key = self.config[key].get()
-                    item[key] = dir
+                    item[key] = dir_name
             item.store()
