@@ -22,6 +22,8 @@ class NotAgain(BeetsPlugin):
     def __init__(self):
         super(NotAgain, self).__init__()
 
+        self.config.add({'quiet': False})
+
         self.chained = False
 
         self.register_listener('import_task_created',
@@ -43,6 +45,8 @@ class NotAgain(BeetsPlugin):
                 or isinstance(task, ArchiveImportTask):
             return [task]
 
+        quiet = self.config['quiet']
+
         library_base_path = bytestring_path(config['directory'].get())
         items_to_remove = []
         if isinstance(task, SingletonImportTask):
@@ -56,8 +60,9 @@ class NotAgain(BeetsPlugin):
                 task.items.remove(item)
                 if item.path in task.paths:
                     task.paths.remove(item.path)
-                self._log.info(
-                    u'Skipping item {0}: already present at the library.'.format(displayable_path(item.path)))
+                if not quiet:
+                    self._log.info(
+                        u'Skipping item {0}: already present at the library.'.format(displayable_path(item.path)))
 
             return [task] if len(task.items) > 0 else []
 
@@ -69,6 +74,7 @@ class NotAgain(BeetsPlugin):
                     not session.lib.items(PathQuery('path', item.path)):
                 return [task]
 
-        self._log.info(u'Skipping album {0}: already present at the library.'.format(
-            displayable_path(task.paths[0])))
+        if not quiet:
+            self._log.info(u'Skipping album {0}: already present at the library.'.format(
+                displayable_path(task.paths[0])))
         return []
