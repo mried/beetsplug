@@ -36,6 +36,9 @@ class NotAgain(BeetsPlugin):
         if self.chained and not chained:
             return None
 
+        if 'library' in config['import'] and config['import']['library']:
+            return [task]
+
         if isinstance(task, SentinelImportTask) \
                 or isinstance(task, ArchiveImportTask):
             return [task]
