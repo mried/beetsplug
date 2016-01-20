@@ -54,7 +54,7 @@ class NotAgain(BeetsPlugin):
                 if item.path in task.paths:
                     task.paths.remove(item.path)
                 self._log.info(
-                    u'Skipping item {0}: already present at the library.'.format(item.path))
+                    u'Skipping item {0}: already present at the library.'.format(displayable_path(item.path)))
 
             return [task] if len(task.items) > 0 else []
 
