@@ -12,6 +12,7 @@
         <script type="text/javascript">
             var size_thresh = {{ size_thresh }};
             var ar_thresh = {{ ar_thresh }};
+            var max_file_size = {{ max_file_size }};
         </script>
         <script src="{{ url_for('static', filename='js/webchooser.js') }}"></script>
     </head>
@@ -83,6 +84,10 @@
                 <tr>
                     <td>AR</td>
                     <td class="<%= aspect_ratio < ar_thresh ? 'bad' : 'good' %>"><%= aspect_ratio.toFixed(2) %></td>
+                </tr>
+                <tr>
+                    <td>Size</td>
+                    <td class="<%= file_size > max_file_size ? 'bad' : 'good' %>"><%= format_size(file_size) %></td>
                 </tr>
             </table>
         </script>

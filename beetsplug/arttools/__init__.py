@@ -36,6 +36,7 @@ class ArtToolsPlugin(BeetsPlugin):
         self.config.add({
             'aspect_ratio_thresh': 0.8,
             'size_thresh': 200,
+            'max_file_size': 1024 * 1024,
             'additional_names': [],
             'collage_tilesize': 200,
             'collect_extract': True,
@@ -164,6 +165,7 @@ class ArtToolsPlugin(BeetsPlugin):
             do not match the rules for a good album art."""
         aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
         size_thresh = self.config['size_thresh'].get()
+        max_file_size = self.config['max_file_size'].get()
 
         self._log.info(
             u"Art is bad if its aspect ratio is < {0} or either width or "
@@ -172,11 +174,13 @@ class ArtToolsPlugin(BeetsPlugin):
         albums = lib.albums(ui.decargs(args))
         for image in self._get_bound_art_files(albums):
             try:
-                width, height, size, aspect_ratio = self.get_image_info(image)
-                if aspect_ratio < aspect_ratio_thresh or size < size_thresh:
-                    self._log.info(u'{0} ({1} x {2}) AR:{3:.4}',
+                width, height, size, aspect_ratio, file_size = self.get_image_info(image)
+                if aspect_ratio < aspect_ratio_thresh or size < size_thresh or \
+                   file_size > max_file_size:
+                    self._log.info(u'{0} ({1} x {2}) AR:{3:.4} {4}',
                                    util.displayable_path(image), width,
-                                   height, aspect_ratio)
+                                   height, aspect_ratio,
+                                   self.format_file_size(file_size))
             except Exception:
                 pass
 
@@ -234,6 +238,7 @@ class ArtToolsPlugin(BeetsPlugin):
     def get_chosen_art(self, album):
         aspect_ratio_thresh = self.config['aspect_ratio_thresh'].get()
         size_thresh = self.config['size_thresh'].get()
+        max_file_size = self.config['max_file_size'].get()
         album_path = album.item_dir()
         if album_path:
             images = self.get_art_files(album_path)
@@ -241,13 +246,12 @@ class ArtToolsPlugin(BeetsPlugin):
                 attributed_images = []
                 for image in images:
                     try:
-                        width, height, size, aspect_ratio = self. \
+                        width, height, size, aspect_ratio, file_size = self. \
                             get_image_info(util.syspath(image))
                     except IOError:
                         continue
                     attributed_images.append({'file': image,
-                                              'bytes': os.stat(
-                                                  util.syspath(image)).st_size,
+                                              'bytes': file_size,
                                               'width': width,
                                               'height': height,
                                               'size': size,
@@ -260,7 +264,8 @@ class ArtToolsPlugin(BeetsPlugin):
 
                 filtered_images = \
                     filter(lambda i: i['ar'] >= aspect_ratio_thresh
-                           and i['size'] >= size_thresh,
+                                     and i['size'] >= size_thresh
+                                     and i['bytes'] < max_file_size,
                            attributed_images)
 
                 if len(filtered_images) == 0:
@@ -335,10 +340,11 @@ class ArtToolsPlugin(BeetsPlugin):
                 for image in images:
                     info = u""
                     if opts.verbose:
-                        width, height, size, aspect_ratio = \
+                        width, height, size, aspect_ratio, file_size = \
                             self.get_image_info(util.syspath(image))
-                        info = u" ({0} x {1}) AR:{2:.4}".format(width, height,
-                                                                aspect_ratio)
+                        info = u" ({0} x {1}) AR:{2:.4} {3}".format(width, height,
+                                                                    aspect_ratio,
+                                                                    self.format_file_size(file_size))
                     self._log.info(util.displayable_path(image) + info)
 
     def art_collage(self, lib, opts, args):
@@ -488,7 +494,8 @@ class ArtToolsPlugin(BeetsPlugin):
         aspect_ratio = float(width) / float(height)
         if aspect_ratio > 1:
             aspect_ratio = 1 / aspect_ratio
-        return width, height, size, aspect_ratio
+        file_size = os.stat(util.syspath(path)).st_size
+        return width, height, size, aspect_ratio, file_size
 
     @staticmethod
     def _get_image_files(path):
@@ -534,3 +541,14 @@ class ArtToolsPlugin(BeetsPlugin):
             if album.artpath:
                 images.append(album.artpath)
         return images
+
+    @staticmethod
+    def format_file_size(size):
+        """Format a file size into something human readable"""
+        size = float(size)
+        units = ['B', 'KB', 'MB', 'GB']
+        for unit in units:
+            if size < 1024:
+                return '{0}{1}'.format(int(size), unit)
+            size /= 1024
+        return '{0}TB'.format(int(size))

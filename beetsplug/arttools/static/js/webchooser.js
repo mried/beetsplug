@@ -32,8 +32,11 @@ app.Art = Backbone.Model.extend({
     isBadAspectRatio: function() {
         return this.get('aspect_ratio') < ar_thresh;
     },
+    isBadFileSize: function() {
+        return this.get('file_size') > max_file_size;
+    },
     isBadArt: function() {
-        return this.isBadSize() || this.isBadAspectRatio();
+        return this.isBadSize() || this.isBadAspectRatio() || this.isBadFileSize();
     }
 });
 
@@ -275,3 +278,15 @@ app.appView = new app.AppView();
 // App setup.
 Backbone.history.start({pushState: false});
 });
+
+function format_size(bytes) {
+    var units = ['B', 'KB', 'MB', 'GB'];
+    for (var i = 0; i < units.length; ++i) {
+        var unit = units[i];
+        if (bytes < 1024) {
+            return bytes.toFixed(0) + unit;
+        }
+        bytes /= 1024;
+    }
+    return bytes.toFixed(0) + 'TB';
+}

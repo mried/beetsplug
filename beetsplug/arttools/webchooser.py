@@ -52,8 +52,10 @@ def before_request():
 def home():
     size_thresh = g.plugin.config['size_thresh'].get()
     aspect_ratio_thresh = g.plugin.config['aspect_ratio_thresh'].get()
+    max_file_size = g.plugin.config['max_file_size'].get()
     return flask.render_template('index.html', size_thresh=size_thresh,
-                                 ar_thresh=aspect_ratio_thresh)
+                                 ar_thresh=aspect_ratio_thresh,
+                                 max_file_size=max_file_size)
 
 
 @app.route("/query/")
@@ -259,7 +261,8 @@ def get_album_dict(album):
         chosen_art = os.path.split(chosen_art)[1]
     for art_file in g.plugin.get_art_files(album.path):
         try:
-            width, height, _, aspect_ratio = g.plugin.get_image_info(art_file)
+            width, height, _, aspect_ratio, file_size = \
+                g.plugin.get_image_info(art_file)
         except IOError:
             continue
         file_name = os.path.split(art_file)[1]
@@ -267,6 +270,7 @@ def get_album_dict(album):
                           'width': width,
                           'height': height,
                           'aspect_ratio': aspect_ratio,
+                          'file_size': file_size,
                           'bound_art': file_name == bound_art,
                           'would_choose': file_name == chosen_art})
     album_dict = {'id': album.id,
