@@ -1,5 +1,5 @@
 # This file is part of beets.
-# Copyright 2015, Malte Ried
+# Copyright 2015,2016, Malte Ried
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -14,10 +14,11 @@
 import os
 import re
 
-from beets import util
+from beets import util, config
 from beets.importer import ImportTask, SingletonImportTask,\
     SentinelImportTask, ArchiveImportTask, ImportTaskFactory
 from beets.plugins import BeetsPlugin
+from beets.util import fnmatch_all
 
 
 class AutoSingletonPlugin(BeetsPlugin):
@@ -25,6 +26,8 @@ class AutoSingletonPlugin(BeetsPlugin):
         super(AutoSingletonPlugin, self).__init__()
 
         self.chained = False
+
+        self.config.add({'clutter_dirs': []})
 
         self.register_listener('import_task_created',
                                self.import_task_created_event)
@@ -65,9 +68,10 @@ class AutoSingletonPlugin(BeetsPlugin):
             return True
 
         # Are there any directories in the folder of the current task?
+        clutter = config['clutter'].as_str_seq()
         for sub_entry in os.listdir(task_path):
-            sub_entry = os.path.join(task_path, sub_entry)
-            if os.path.isdir(sub_entry):
+            full_sub_entry = os.path.join(task_path, sub_entry)
+            if os.path.isdir(full_sub_entry) and not fnmatch_all([sub_entry], clutter):
                 # Singletons
                 return True
 
